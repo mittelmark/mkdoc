@@ -1,7 +1,7 @@
 [comment {-*- tcl -*- doctools manpage}]
 [vset VERSION 0.7.0]
 [manpage_begin mkdoc n [vset VERSION]]
-[copyright {2020-2022, Detlef Groth <detlef(at)dgroth(dot)de>}]
+[copyright {2019-2022, Detlef Groth <detlef(at)dgroth(dot)de>}]
 [moddesc   {Source code documentation using Markdown}]
 [titledesc {Extracts and optionally converts Markdown comments in source code to HTML}]
 [category  {Text processing}]

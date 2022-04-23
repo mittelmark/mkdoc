@@ -4,7 +4,7 @@ exec tclsh "$0" "$@"
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <220423.0617>
+#  Last Modified : <220423.0622>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -445,7 +445,7 @@ Examples:
     
 Author: @ Dr. Detlef Groth, Schwielowsee, 2019-2022
     
-License: MIT
+License: BSD
 }
     if {[lsearch $argv {--version}] > -1} {
         puts "[package provide mkdoc::mkdoc]"
@@ -721,13 +721,35 @@ License: MIT
 #'
 #' Copyright (c) 2019-22  Detlef Groth, E-mail: <detlef(at)dgroth(dot)de>
 #' 
-#' This library is free software; you can use, modify, and redistribute it
-#' for any purpose, provided that existing copyright notices are retained
-#' in all copies and that this notice is included verbatim in any
-#' distributions.
-#' 
-#' This software is distributed WITHOUT ANY WARRANTY; without even the
-#' implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#' BSD License type:
+
+#' Sun Microsystems, Inc. The following terms apply to all files a ssociated
+#' with the software unless explicitly disclaimed in individual files. 
+
+#' The authors hereby grant permission to use, copy, modify, distribute, and
+#' license this software and its documentation for any purpose, provided that
+#' existing copyright notices are retained in all copies and that this notice
+#' is included verbatim in any distributions. No written agreement, license,
+#' or royalty fee is required for any of the authorized uses. Modifications to
+#' this software may be copyrighted by their authors and need not follow the
+#' licensing terms described here, provided that the new terms are clearly
+#' indicated on the first page of each file where they apply. 
 #'
+#' In no event shall the authors or distributors be liable to any party for
+#' direct, indirect, special, incidental, or consequential damages arising out
+#' of the use of this software, its documentation, or any derivatives thereof,
+#' even if the authors have been advised of the possibility of such damage. 
+#'
+#' The authors and distributors specifically disclaim any warranties,
+#' including, but not limited to, the implied warranties of merchantability,
+#' fitness for a particular purpose, and non-infringement. This software is
+#' provided on an "as is" basis, and the authors and distributors have no
+#' obligation to provide maintenance, support, updates, enhancements, or
+#' modifications. 
+#'
+#' RESTRICTED RIGHTS: Use, duplication or disclosure by the government is
+#' subject to the restrictions as set forth in subparagraph (c) (1) (ii) of
+#' the Rights in Technical Data and Computer Software Clause as DFARS
+#' 252.227-7013 and FAR 52.227-19. 
 
 
