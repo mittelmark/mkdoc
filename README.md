@@ -40,7 +40,7 @@ Markdown documentation comments for programming languages which have not the has
 /*
 #' **void hw(int n);**
 #' ...
-/*
+*/
 void hw(int n) {
     int i = 0;
     for (i = 0 ; i < n; i=i+1) {
