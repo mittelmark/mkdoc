@@ -38,10 +38,17 @@ Markdown documentation comments for programming languages which have not the has
 
 ```c
 /*
-#' **void hw(n);**
+#' **void hw(int n);**
 #' ...
 /*
+void hw(int n) {
+    int i = 0;
+    for (i = 0 ; i < n; i=i+1) {
+        printf("Hello World!\n");
+    }
+}
 ```   
+
 A more extended example can be seen within the script
 [mkdoc/mkdoc.tcl](https://github.com/mittelmark/mkdoc/blob/main/mkdoc/mkdoc.tcl)
 itself. These comments are used to create the longer manual which can be seen here: [mkdoc-mkdoc.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc-mkdoc.html).
