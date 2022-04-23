@@ -1,0 +1,74 @@
+[comment {-*- tcl -*- doctools manpage}]
+[vset VERSION 0.7.0]
+[manpage_begin mkdoc n [vset VERSION]]
+[moddesc   {Source code documentation using Markdown}]
+[titledesc {Extracts and optionally converts Markdown comments in source code to HTML}]
+[category  {Text processing}]
+[require Tcl 8.5]
+[require Markdown [opt 1.2.1]]
+[require yaml [opt 0.4.1]]
+[require mkdoc [opt [vset VERSION]]]
+[description]
+
+The package [package mkdoc] provides a command to extract embedded code documentation
+after "#'" comments from source code files and optionally convert these comments 
+into HMTL using the tcllib Markdown library. For a more extended manual look at the manual generated directly from mkdoc.tcl using the embedded Markdown comments within the file mkdoc.tcl: [uri mkdoc-mkdoc.html]
+
+[list_begin definitions]
+
+[call [cmd ::mkdoc::mkdoc] [arg "infile"] [arg "outfile"] [opt "-css cssfile"]]
+
+This command reads the given infile, extract code comments after #' comments
+and if the outfile is an HTML or HTM files converts the file into HTML using
+either a default or the given style sheet. Except for Markdown simple YAML
+headers are as well supported. For instance the following YAML header which be
+placed at the very beginning of the documentation would be supported and used to create a title and author header and to use the given stylesheet for the HTML page: 
+
+[para]
+
+[example {
+#' ---
+#' title: mkdoc::mkdoc 0.7.0
+#' author: Detlef Groth, Schwielowsee, Germany
+#' date: 2022-04-17 
+#' css: mini.css 
+#' ---
+#'
+}]  
+
+
+[call [cmd ::mkdoc::run] [arg "infile"]]
+
+Source the code in infile and runs the examples in the documentation section
+written with Markdown documentation which are given in the example section. Here an example which will be executed by the Tcl interpreter
+
+[para]
+[example {
+#' ## <a name="example">EXAMPLE</a>
+#' 
+#' ```
+#' puts "Hello mkdoc package"
+#' puts "I am in the example section"
+#' ```
+}]
+
+[list_end]
+
+[section Examples]
+[para]
+
+An example for converting the embedded documentation in the file mkdoc.tcl.
+
+[para]
+[example {
+package require mkdoc
+# extracting the Markdown
+mkdoc::mkdoc mkdoc.tcl mkdoc.md
+# converting Markdown to HTMl
+mkdoc::mkdoc mkdoc.md mkdoc.html
+# direct conversion without intermediate file
+mkdoc::mkdoc mkdoc.tcl mkdoc.html
+}]
+
+[vset CATEGORY mkdoc]
+[manpage_end]
