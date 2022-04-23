@@ -34,9 +34,17 @@ def hw(n=3):
     
 ```
 
+Markdown documentation comments for programming languages which have not the hash character as a comment character can be embedded using multliline comments. Here an example for a C or C++ programm:
+
+```c
+/*
+#' **void hw(n);**
+#' ...
+/*
+```   
 A more extended example can be seen within the script
 [mkdoc/mkdoc.tcl](https://github.com/mittelmark/mkdoc/blob/main/mkdoc/mkdoc.tcl)
-itself.
+itself. These comments are used to create the longer manual which can be seen here: [mkdoc-mkdoc.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc-mkdoc.html).
 
 
   
