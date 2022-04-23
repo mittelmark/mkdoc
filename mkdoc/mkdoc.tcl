@@ -4,7 +4,7 @@ exec tclsh "$0" "$@"
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <220423.0526>
+#  Last Modified : <220423.0617>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -148,6 +148,10 @@ namespace eval mkdoc {
 <meta name="title" content="$document(title)">
 <meta name="author" content="$document(author)">
 <title>$document(title)</title>
+<style>
+$style
+</style>
+
 <link rel="stylesheet" href="$document(css)">
 </head>
 <body>
@@ -303,6 +307,14 @@ proc mkdoc::mkdoc {filename outfile args} {
             }
         }
         if {$outmode eq "html"} {
+            if {[dict get $yamldict css] eq "mkdoc.css" && ![file exists "mkdoc.css"]} {
+                set out [open mkdoc.css w 0600]
+                puts $out $style
+                close $out
+            }
+            if {[dict get $yamldict css] ne "mkdoc.css"} {
+                set style ""
+            }
             set html [Markdown::convert $mdhtml]
             set out [open $outfile w 0644]
             foreach key [dict keys $yamldict] {
@@ -320,11 +332,6 @@ proc mkdoc::mkdoc {filename outfile args} {
             puts $out $html
             puts $out "</body>\n</html>"
             close $out
-            if {[dict get $yamldict css] eq "mkdoc.css" && ![file exists "mkdoc.css"]} {
-                set out [open mkdoc.css w 0600]
-                puts $out $style
-                close $out
-            }
             puts stderr "Success: file $outfile was written!"
         } else {
             set out [open $outfile w 0644]
