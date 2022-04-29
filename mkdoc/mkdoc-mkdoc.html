@@ -8,7 +8,6 @@
 <meta name="author" content="Detlef Groth, Schwielowsee, Germany">
 <title>mkdoc::mkdoc 0.7.0</title>
 <style>
-
 body {
     margin-left: 10%; margin-right: 10%;
     font-family: Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
@@ -26,7 +25,9 @@ pre {
     border-bottom:		1px solid black;
     font-family: Monaco, Consolas, "Liberation Mono", Menlo, Courier, monospace;
 }
-a { text-decoration: none }
+a {
+    text-decoration: none
+}
 pre.synopsis {
     background: #cceeff;
 }
@@ -36,7 +37,6 @@ pre.code code.tclin {
 pre.code code.tclout {
     background-color: #ffffee;
 }
-
 code {
     font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
 }
@@ -77,19 +77,14 @@ h2, h3 {
     background:  transparent;
     text-align:	 left;
 }
-
-
 </style>
-
-<link rel="stylesheet" href="mkdoc.css">
 </head>
 <body>
 
 
-
-    <h1 class="title">mkdoc::mkdoc 0.7.0</h1>
-    <h2 class="author">Detlef Groth, Schwielowsee, Germany</h2>
-    <h2 class="date">2022-04-23</h2>
+<h1 class="title">mkdoc::mkdoc 0.7.0</h1>
+<h2 class="author">Detlef Groth, Schwielowsee, Germany</h2>
+<h2 class="date">2022-04-29</h2>
 
 <p><center> Manual: <a href="mkdoc.html">short (doctools)</a> - <a href="mkdoc-mkdoc.html">long (mkdoc)</a> </center></p>
 
@@ -125,7 +120,7 @@ doctools format and optionally converting it into HTML.</p>
 <p>Usage as package:</p>
 
 <pre class='code'><code>package require mkdoc::mkdoc
-mkdoc::mkdoc inputfile outputfile ?-css file.css?</code></pre>
+mkdoc::mkdoc inputfile outputfile ?--css file.css?</code></pre>
 
 <p>Usage as command line application for extraction of Markdown comments prefixed with <code>#'</code>:</p>
 
@@ -152,22 +147,22 @@ An explanation on how to do this, is given in the section <a href="#install">Ins
 <h2><a name='command'>COMMAND</a></h2>
 
 <p><a name="mkdoc"> </a>
-<strong>mkdoc::mkdoc</strong> <em>infile outfile ?-css file.css?</em></p>
+<strong>mkdoc::mkdoc</strong> <em>infile outfile ?--css file.css?</em></p>
 
 <blockquote>
 <p>Extracts the documentation in Markdown format from <em>infile</em> and writes the documentation 
    to <em>outfile</em> either in Markdown, Doctools  or HTML format.</p>
 
 <ul>
-<li><em>-infile filename</em> - file with embedded markdown documentation</li>
-<li><em>-outfile filename</em> -  name of output file extension</li>
-<li><em>-css cssfile</em> if outfile is an HTML file use the given <em>cssfile</em>
+<li><em>infile</em> - file with embedded markdown documentation</li>
+<li><em>outfile</em> -  name of output file extension</li>
+<li><em>--css cssfile</em> if outfile is an HTML file use the given <em>cssfile</em>
 </li></ul>
 
 <p>If the file extension of the outfile is either html or htm a HTML file is created. If the output file has other 
   file extension the documentation after <em>#'</em> comments is simply extracted and stored in the given <em>outfile</em>, <em>-mode</em> flag  (one of -html, -md, -pandoc) is not given, the output format is taken from the file extension of the output file, either <em>.html</em> for HTML or <em>.md</em> for Markdown format. This deduction from the filetype can be overwritten giving either <code>-html</code> or <code>-md</code> as command line flags. If as mode <code>-pandoc</code> is given, the Markdown markup code as well contains the YAML header.
   If infile has the extension .md (Markdown) or -man (Doctools) than conversion to html will be performed, outfile file extension
-  In this case must be .html. If output is html a <em>-css</em> flag can be given to use the given stylesheet file instead of the default style sheet embedded within the mkdoc code.</p>
+  In this case must be .html. If output is html a <em>--css</em> flag can be given to use the given stylesheet file instead of the default style sheet embedded within the mkdoc code.</p>
 
 <p>Example:</p>
 
@@ -413,7 +408,11 @@ in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href
 <li>2022-04-XX Release 0.7.0
 <ul>
 <li>removing features to simplify the code, so removed plugin support, underline placeholder and sorting facilitites to reduce code size</li>
-<li>creating tcllib compatible manual page
+<li>creating tcllib compatible manual page</li>
+<li>aku changes and fixes to include mkdoc into tcllib's infrastructure</li>
+<li>splitting of command line app to the apps folder</li>
+<li>adding hook package requirement</li>
+<li>changing license to BSD
 </li></ul>
 
 </li></ul>
