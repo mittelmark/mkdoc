@@ -1,6 +1,4 @@
-#!/bin/sh
-# A Tcl comment, whose contents don't matter \
-exec tclsh "$0" "$@"
+# -*- mode: tcl ; fill-column: 80 -*-
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
@@ -23,13 +21,12 @@ exec tclsh "$0" "$@"
 #
 # Copyright (c) 2019-2022  Dr. Detlef Groth, E-mail: detlef(at)dgroth(dot)de
 # 
-# This library is free software; you can use, modify, and redistribute it
-# for any purpose, provided that existing copyright notices are retained
-# in all copies and that this notice is included verbatim in any
-# distributions.
+# This library is free software; you can use, modify, and redistribute it for
+# any purpose, provided that existing copyright notices are retained in all
+# copies and that this notice is included verbatim in any distributions.
 # 
-# This software is distributed WITHOUT ANY WARRANTY; without even the
-# implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# This software is distributed WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 #
 ##############################################################################
 #' ---
@@ -68,7 +65,7 @@ exec tclsh "$0" "$@"
 #'
 #' ```
 #' package require mkdoc::mkdoc
-#' mkdoc::mkdoc inputfile outputfile ?-css file.css?
+#' mkdoc::mkdoc inputfile outputfile ?--css file.css?
 #' ```
 #'
 #' Usage as command line application for extraction of Markdown comments prefixed with `#'`:
@@ -100,19 +97,19 @@ exec tclsh "$0" "$@"
 #' ## <a name='command'>COMMAND</a>
 #'
 #'  <a name="mkdoc"> </a>
-#' **mkdoc::mkdoc** *infile outfile ?-css file.css?*
+#' **mkdoc::mkdoc** *infile outfile ?--css file.css?*
 #' 
 #' > Extracts the documentation in Markdown format from *infile* and writes the documentation 
 #'    to *outfile* either in Markdown, Doctools  or HTML format. 
 #' 
-#' > - *-infile filename* - file with embedded markdown documentation
-#'   - *-outfile filename* -  name of output file extension
-#'   - *-css cssfile* if outfile is an HTML file use the given *cssfile*
+#' > - *infile* - file with embedded markdown documentation
+#'   - *outfile* -  name of output file extension
+#'   - *--css cssfile* if outfile is an HTML file use the given *cssfile*
 #'     
 #' > If the file extension of the outfile is either html or htm a HTML file is created. If the output file has other 
 #'   file extension the documentation after _#'_ comments is simply extracted and stored in the given _outfile_, *-mode* flag  (one of -html, -md, -pandoc) is not given, the output format is taken from the file extension of the output file, either *.html* for HTML or *.md* for Markdown format. This deduction from the filetype can be overwritten giving either `-html` or `-md` as command line flags. If as mode `-pandoc` is given, the Markdown markup code as well contains the YAML header.
 #'   If infile has the extension .md (Markdown) or -man (Doctools) than conversion to html will be performed, outfile file extension
-#'   In this case must be .html. If output is html a *-css* flag can be given to use the given stylesheet file instead of the default style sheet embedded within the mkdoc code.
+#'   In this case must be .html. If output is html a *--css* flag can be given to use the given stylesheet file instead of the default style sheet embedded within the mkdoc code.
 #'  
 #' > Example:
 #'
@@ -122,146 +119,144 @@ exec tclsh "$0" "$@"
 #' mkdoc::mkdoc mkdoc.tcl mkdoc.md 
 #' > ```
 
-package require Tcl 8.4
-if {[package provide Markdown] eq ""} {
-    package require Markdown
-}
-if {![package vsatisfies [package provide Tcl] 8.6]} {
-    proc lmap {_var list body} {
-        upvar 1 $_var var
-        set res {}
-        foreach var $list {lappend res [uplevel 1 $body]}
-        set res
-    }
-}
-package provide mkdoc::mkdoc 0.7.0
-package provide mkdoc [package present mkdoc::mkdoc]
+package require Tcl 8.6
+
 package require yaml
+package require Markdown
+package require hook
+
+package provide mkdoc 0.7.0
+
 namespace eval mkdoc {
-    variable mkdocfile [info script]
-    variable htmltemplate {
-<!DOCTYPE html>
-<html>
-<head>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: ; script-src 'self' 'nonce-d717cfb5d902616b7024920ae20346a8494f7832145c90e0' ; style-src 'self' 'unsafe-inline'" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="title" content="$document(title)">
-<meta name="author" content="$document(author)">
-<title>$document(title)</title>
-<style>
-$style
-</style>
+    variable deindent [list \n\t \n "\n    " \n]
+    
+    variable htmltemplate [string map $deindent {
+	<!DOCTYPE html>
+	<html>
+	<head>
+	<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: ; script-src 'self' 'nonce-d717cfb5d902616b7024920ae20346a8494f7832145c90e0' ; style-src 'self' 'unsafe-inline'" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta name="title" content="$document(title)">
+	<meta name="author" content="$document(author)">
+	<title>$document(title)</title>
+	$style
+	</head>
+	<body>
+    }]
 
-<link rel="stylesheet" href="$document(css)">
-</head>
-<body>
+    variable htmlstart [string map $deindent {
+	<h1 class="title">$document(title)</h1>
+	<h2 class="author">$document(author)</h2>
+	<h2 class="date">$document(date)</h2>
+    }]
 
-}
-variable htmlstart {
-    <h1 class="title">$document(title)</h1>
-    <h2 class="author">$document(author)</h2>
-    <h2 class="date">$document(date)</h2>
-}
-variable style {
-body {
-    margin-left: 10%; margin-right: 10%;
-    font-family: Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
-    max-width: 90%;
-}
-pre {
-    padding-top:	1ex;
-    padding-bottom:	1ex;
-    padding-left:	2ex;
-    padding-right:	1ex;
-    width:		100%;
-    color: 		black;
-    background: 	#fff4e4;
-    border-top:		1px solid black;
-    border-bottom:		1px solid black;
-    font-family: Monaco, Consolas, "Liberation Mono", Menlo, Courier, monospace;
-}
-a { text-decoration: none }
-pre.synopsis {
-    background: #cceeff;
-}
-pre.code code.tclin {
-    background-color: #ffeeee;
-}
-pre.code code.tclout {
-    background-color: #ffffee;
-}
+    variable mkdocstyle [string map $deindent {
+	body {
+	    margin-left: 10%; margin-right: 10%;
+	    font-family: Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
+	    max-width: 90%;
+	}
+	pre {
+	    padding-top:	1ex;
+	    padding-bottom:	1ex;
+	    padding-left:	2ex;
+	    padding-right:	1ex;
+	    width:		100%;
+	    color: 		black;
+	    background: 	#fff4e4;
+	    border-top:		1px solid black;
+	    border-bottom:		1px solid black;
+	    font-family: Monaco, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+	}
+	a {
+	    text-decoration: none
+	}
+	pre.synopsis {
+	    background: #cceeff;
+	}
+	pre.code code.tclin {
+	    background-color: #ffeeee;
+	}
+	pre.code code.tclout {
+	    background-color: #ffffee;
+	}
+	code {
+	    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+	}
+	h1,h2, h3,h4 {
+	    font-family:	sans-serif;
+	    background: 	transparent;
+	}
+	h1 {
+	    font-size: 120%;
+	    text-align: center;
+	}
 
-code {
-    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
-}
-h1,h2, h3,h4 {
-    font-family:	sans-serif;
-    background: 	transparent;
-}
-h1 {
-    font-size: 120%;
-    text-align: center;
-}
-
-h2.author, h2.date {
-    text-align: center;
-    color: black;
-}
-h2 {    font-size: 110%; }
-h3, h4 {  font-size: 100% }
-div.title h1 {
-    font-family: sans-serif;
-    font-size:   120%;
-    background:  transparent;
-    text-align:  center;
-    color:       black;
-}
-div.author h3, div.date h3 {
-    font-family:	sans-serif;
-    font-size:	110%;
-    background: 	transparent;
-    text-align:	center;
-    color: black ;
-}
-h2, h3 {
-    margin-top:  1em;
-    font-family: sans-serif;
-    font-size:	 110%;
-    color:	 #005A9C;
-    background:  transparent;
-    text-align:	 left;
-}
-
-}
+	h2.author, h2.date {
+	    text-align: center;
+	    color: black;
+	}
+	h2 {    font-size: 110%; }
+	h3, h4 {  font-size: 100% }
+	div.title h1 {
+	    font-family: sans-serif;
+	    font-size:   120%;
+	    background:  transparent;
+	    text-align:  center;
+	    color:       black;
+	}
+	div.author h3, div.date h3 {
+	    font-family:	sans-serif;
+	    font-size:	110%;
+	    background: 	transparent;
+	    text-align:	center;
+	    color: black ;
+	}
+	h2, h3 {
+	    margin-top:  1em;
+	    font-family: sans-serif;
+	    font-size:	 110%;
+	    color:	 #005A9C;
+	    background:  transparent;
+	    text-align:	 left;
+	}
+    }]
 } 
 
 proc mkdoc::mkdoc {filename outfile args} {
-    variable mkdocfile
     variable htmltemplate
     variable htmlstart
-    variable style
-    array set arg [list css ""]
+    variable mkdocstyle
+
+    array set arg [list --css ""]
     array set arg $args
     if {[file extension $filename] eq [file extension $outfile]} {
-        error "Error: infile and outfile must have different file extensions!"
+	return -code error "Error: infile and outfile must have different file extensions!"
     }
-    set inmode  code
     set outmode html
     if {[file extension $outfile] in [list .md .man]} {
         set outmode markup
     }
+    set inmode  code
     if {[file extension $filename] in [list .md .man]} {
         set inmode markup
     }
+
+    hook call mkdoc::mkdoc Processing $filename $inmode $outmode
+    
     set markdown ""
-    if [catch {open $filename r} infh] {
-        error "Cannot open $filename: $infh"
+    if [catch {
+	open $filename r
+    } infh] {
+        return -code error "Cannot open $filename: $infh"
     } else {
         set flag false
         while {[gets $infh line] >= 0} {
-            if {[regexp {^\s*#' +#include +"(.*)"} $line -> include]} {
-                if [catch {open $include r} iinfh] {
-                    error "Cannot open $filename: $include"
+	    if {[regexp {^\s*#' +#include +"(.*)"} $line -> include]} {
+                if [catch {
+		    open $include r
+		} iinfh] {
+                    return -code error "Cannot open include file $include: $iinfh"
                 } else {
                     #set ilines [read $iinfh]
                     while {[gets $iinfh iline] >= 0} {
@@ -277,11 +272,16 @@ proc mkdoc::mkdoc {filename outfile args} {
             }
         }
         close $infh
-        set yamldict [dict create title "Documentation [file tail [file rootname $filename]]" author "NN" date  [clock format [clock seconds] -format "%Y-%m-%d"] author NN css mkdoc.css]
-        if {$arg(css) ne ""} {
-            dict set yamldict css $arg(css)
-        } 
-        set mdhtml ""
+        set yamldict \
+	    [dict create \
+		 title  "Documentation [file tail [file rootname $filename]]" \
+		 author NN \
+		 date   [clock format [clock seconds] -format "%Y-%m-%d"] \
+		 css    mkdoc.css]
+
+	hook call mkdoc::mkdoc Header/Defaults $yamldict
+
+	set mdhtml ""
         set yamlflag false
         set yamltext ""
         set hasyaml false
@@ -294,11 +294,12 @@ proc mkdoc::mkdoc {filename outfile args} {
                 set yamlflag true
             } elseif {$yamlflag && [regexp {^---} $line]} {
                 set hasyaml true
-                puts stderr "$yamldict"
+		
                 set yamldict [dict merge $yamldict [yaml::yaml2dict $yamltext]]
-                puts stderr "$yamldict"
+
+		hook call mkdoc::mkdoc Header/YAML $yamldict
+
                 set yamlflag false
-                set yamltext "---\n$yamltext---"
             } elseif {$yamlflag} {
                 append yamltext "$line\n"
             } else {
@@ -306,14 +307,25 @@ proc mkdoc::mkdoc {filename outfile args} {
                 append mdhtml "$indent$line\n"
             }
         }
+        if {$arg(--css) ne ""} {
+            dict set yamldict css $arg(--css)
+        }
+
+	# Regenerate yamltext from the final dict (to report the final CSS reference)
+	set yamltext "---\n"
+	foreach k [lsort -dict [dict keys $yamldict]] {
+	    append yamltext "${k}: [dict get $yamldict $k]\n"
+	}
+	append yamltext "---"
+
+	hook call mkdoc::mkdoc Header/Final $yamldict
+	
+	set style <style>$mkdocstyle</style>
+
         if {$outmode eq "html"} {
-            if {[dict get $yamldict css] eq "mkdoc.css" && ![file exists "mkdoc.css"]} {
-                set out [open mkdoc.css w 0600]
-                puts $out $style
-                close $out
-            }
             if {[dict get $yamldict css] ne "mkdoc.css"} {
-                set style ""
+		# Switch from embedded style to external link
+                set style "<link rel=\"stylesheet\" href=\"[dict get $yamldict css]\">"
             }
             set html [Markdown::convert $mdhtml]
             set out [open $outfile w 0644]
@@ -332,15 +344,17 @@ proc mkdoc::mkdoc {filename outfile args} {
             puts $out $html
             puts $out "</body>\n</html>"
             close $out
-            puts stderr "Success: file $outfile was written!"
         } else {
             set out [open $outfile w 0644]
             puts $out $yamltext
             puts $out $mdhtml
             close $out
         }
+
+	hook call mkdoc::mkdoc Done $outfile
     }
 }
+
 #' 
 #' <a name="run"> </a>
 #' **mkdoc::run** *infile* 
@@ -367,17 +381,18 @@ proc ::mkdoc::run {argv} {
     set extext ""
     set example false
     set excode false
-    if [catch {open $filename r} infh] {
-        puts stderr "Cannot open $filename: $infh"
-        exit
+    if [catch {
+	open $filename r
+    } infh] {
+	return -code error "Cannot open $filename: $infh"
     } else {
-        while {[gets $infh line] >= 0} {
-            # Process line
-            if {$extext eq "" && [regexp -nocase \
-                             {^\s*#'\s+#{2,3}\s.+Example} $line]} {
+	while {[gets $infh line] >= 0} {
+	    # Process line
+	    if {$extext eq "" && \
+		    [regexp -nocase {^\s*#'\s+#{2,3}\s.+Example} $line]} {
                 set example true
             } elseif {$extext ne "" && \
-                      [regexp -nocase "^\\s*#'.*\\s# demo: $extext" $line]} {
+			  [regexp -nocase "^\\s*#'.*\\s# demo: $extext" $line]} {
                 set excode true
             } elseif {$example && [regexp {^\s*#'\s+>?\s*```} $line]} {
                 set example false
@@ -398,75 +413,6 @@ proc ::mkdoc::run {argv} {
                 destroy .
             }
         }
-    }
-}
-
-
-if {[info exists argv0] && $argv0 eq [info script]} {
-    
-set Usage {
-Usage: __APP__ ?[--help|version]? INFILE OUTFILE ?[--css file.css]?
-           
-mkdoc - code documentation tool to process embedded Markdown markup
-        given after "#'" comments
-        
-Positional arguments (required):
-
-    INFILE - input file with:
-               - embedded Markdown comments: #' Markdown markup
-               - pure Markdown code (file.md)
-    OUTFILE - output file usually HTML or Markdown file,
-              file format is deduced on file extension .html or .md,
-              if OUTFILE is the `-` sign output is written to stdout
-     
-            
-Optional arguments:
-
-    --help         - display this help page
-    --version      - display version number
-    --license      - display license information 
-    --css CSSFILE  - use the given CSSFILE instead of default 
-                      mkdoc.css
-    
-Examples:
-    
-    # create manual page for mkdoc.tcl itself 
-    __APP__ mkdoc.tcl mkdoc.html
-    
-    # create manual code for a CPP file using an own style sheet
-    __APP__ sample.cpp sample.html --css manual.css
-    
-    # extract code documentation as simple Markdown
-    # ready to be processed further with pandoc
-    __APP__ sample.cpp sample.md 
-    
-    # convert a Markdown file to HTML
-    __APP__ sample.md sample.html
-    
-Author: @ Dr. Detlef Groth, Schwielowsee, 2019-2022
-    
-License: BSD
-}
-    if {[lsearch $argv {--version}] > -1} {
-        puts "[package provide mkdoc::mkdoc]"
-        return
-    } elseif {[lsearch $argv {--license}] > -1} {
-        puts "MIT License - see manual page"
-        return
-    }
-    if {[llength $argv] < 2 || [lsearch $argv {--help}] > -1} {
-        set usage [regsub -all {__APP__} $Usage [info script]]
-        puts $usage
-    } elseif {[llength $argv] >= 2 && [lsearch $argv {--run}] == 1} {
-        mkdoc::run $argv 
-    } elseif {[llength $argv] == 2} {
-        if {[regexp {^-.} [lindex $argv 1]]} {
-            puts stderr "Error: wrong outfile name [lindex $argv 1]"
-            exit 0
-        }
-        mkdoc::mkdoc [lindex $argv 0] [lindex $argv 1]
-    } elseif {[llength $argv] > 2} {
-        mkdoc::mkdoc [lindex $argv 0] [lindex $argv 1] [lrange $argv 2 end]
     }
 }
 
