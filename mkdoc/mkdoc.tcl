@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <220423.0622>
+#  Last Modified : <220429.0650>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -652,6 +652,10 @@ proc ::mkdoc::run {argv} {
 #' - 2022-04-XX Release 0.7.0
 #'      - removing features to simplify the code, so removed plugin support, underline placeholder and sorting facilitites to reduce code size
 #'      - creating tcllib compatible manual page
+#'      - aku changes and fixes to include mkdoc into tcllib's infrastructure
+#'      - splitting of command line app to the apps folder
+#'      - adding hook package requirement
+#'      - changing license to BSD
 #'
 #' ## <a name='todo'>TODO</a>
 #'
