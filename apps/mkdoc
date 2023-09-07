@@ -98,7 +98,6 @@ if {[llength $argv] < 2 || [lsearch -exact $argv {--help}] > -1} {
     hook bind mkdoc::mkdoc Header/Final    x {::Report F}
     hook bind mkdoc::mkdoc Done            x ::Done
     hook bind mkdoc::mkdoc Processing      x ::Processing
-    
     mkdoc::mkdoc {*}$argv
 }
 

@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <220429.0650>
+#  Last Modified : <230907.0907>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -16,10 +16,11 @@
 #                  2020-12-30 Release 0.5 (rox2md)
 #                  2022-02-09 Release 0.6
 #                  2022-04-XX Release 0.7 (minimal)
+#                  2023-09-07 Release 0.7.1 (img tag fix)
 #	
 ##############################################################################
 #
-# Copyright (c) 2019-2022  Dr. Detlef Groth, E-mail: detlef(at)dgroth(dot)de
+# Copyright (c) 2019-2023  Dr. Detlef Groth, E-mail: detlef(at)dgroth(dot)de
 # 
 # This library is free software; you can use, modify, and redistribute it for
 # any purpose, provided that existing copyright notices are retained in all
@@ -30,7 +31,7 @@
 #
 ##############################################################################
 #' ---
-#' title: mkdoc::mkdoc 0.7.0
+#' title: mkdoc::mkdoc 0.7.1
 #' author: Detlef Groth, Schwielowsee, Germany
 #' css: mkdoc.css
 #' ---
@@ -125,7 +126,7 @@ package require yaml
 package require Markdown
 package require hook
 
-package provide mkdoc 0.7.0
+package provide mkdoc 0.7.1
 
 namespace eval mkdoc {
     variable deindent [list \n\t \n "\n    " \n]
@@ -303,7 +304,7 @@ proc mkdoc::mkdoc {filename outfile args} {
             } elseif {$yamlflag} {
                 append yamltext "$line\n"
             } else {
-                set line [regsub -all {!\[\]\((.+?)\)} $line "<image src=\"\\1\"></img>"]
+                set line [regsub -all {!\[\]\((.+?)\)} $line "<img src=\"\\1\"></img>"]
                 append mdhtml "$indent$line\n"
             }
         }
@@ -656,6 +657,7 @@ proc ::mkdoc::run {argv} {
 #'      - splitting of command line app to the apps folder
 #'      - adding hook package requirement
 #'      - changing license to BSD
+#' - 2023-09-07 Release 0.7.1 - image tag fix 
 #'
 #' ## <a name='todo'>TODO</a>
 #'
@@ -667,9 +669,9 @@ proc ::mkdoc::run {argv} {
 #'
 #' ## <a name='license'>LICENSE AND COPYRIGHT</a>
 #'
-#' Markdown extractor and converter mkdoc::mkdoc, version 0.7.0
+#' Markdown extractor and converter mkdoc::mkdoc, version 0.7.1
 #'
-#' Copyright (c) 2019-22  Detlef Groth, E-mail: <detlef(at)dgroth(dot)de>
+#' Copyright (c) 2019-23  Detlef Groth, E-mail: <detlef(at)dgroth(dot)de>
 #' 
 #' BSD License type:
 
