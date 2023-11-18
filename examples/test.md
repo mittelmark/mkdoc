@@ -3,7 +3,15 @@
 
 This is an example to show the use of the Javascript library hightlightjs.
 
+## Document creation
+
 The Markdown file can be converted with syntax highlighting like this:
+
+```
+mkdoc example.md example.html --javascript highlightjs
+```
+
+## Code block examples in Tcl
 
 Just indented code block without language marker will work by automatic recognition:
 

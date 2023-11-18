@@ -4,9 +4,9 @@
 <head>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: ; script-src 'self' 'nonce-d717cfb5d902616b7024920ae20346a8494f7832145c90e0' ; style-src 'self' 'unsafe-inline'" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="title" content="mkdoc::mkdoc 0.7.0">
+<meta name="title" content="mkdoc::mkdoc 0.8.0">
 <meta name="author" content="Detlef Groth, Schwielowsee, Germany">
-<title>mkdoc::mkdoc 0.7.0</title>
+<title>mkdoc::mkdoc 0.8.0</title>
 <style>
 body {
     margin-left: 10%; margin-right: 10%;
@@ -82,9 +82,9 @@ h2, h3 {
 <body>
 
 
-<h1 class="title">mkdoc::mkdoc 0.7.0</h1>
+<h1 class="title">mkdoc::mkdoc 0.8.0</h1>
 <h2 class="author">Detlef Groth, Schwielowsee, Germany</h2>
-<h2 class="date">2022-04-29</h2>
+<h2 class="date">2023-11-18</h2>
 
 <p><center> Manual: <a href="mkdoc.html">short (doctools)</a> - <a href="mkdoc-mkdoc.html">long (mkdoc)</a> </center></p>
 
@@ -120,15 +120,17 @@ doctools format and optionally converting it into HTML.</p>
 <p>Usage as package:</p>
 
 <pre class='code'><code>package require mkdoc::mkdoc
-mkdoc::mkdoc inputfile outputfile ?--css file.css?</code></pre>
+mkdoc::mkdoc inputfile outputfile ?--css file.css --header header.html --footer footer.html \
+   --javascript hilightjs|file1.js,file2.js?</code></pre>
 
 <p>Usage as command line application for extraction of Markdown comments prefixed with <code>#'</code>:</p>
 
-<pre class='code'><code>mkdoc inputfile outputfile ?--css file.css?</code></pre>
+<pre class='code'><code>mkdoc inputcodefile outputfile.md ?--css file.css --header header.html --foother footer.html?</code></pre>
 
 <p>Usage as command line application for conversion of Markdown to HTML:</p>
 
-<pre class='code'><code>mkdoc inputfile.md outputfile.html ?--css file.css?</code></pre>
+<pre class='code'><code>mkdoc inputfile.md outputfile.html ?--css file.css,file2.css --header header.html \
+  --footer footer.html --javascript highlighjs|filename1,filename2?</code></pre>
 
 <h2><a name='description'>DESCRIPTION</a></h2>
 
@@ -147,7 +149,7 @@ An explanation on how to do this, is given in the section <a href="#install">Ins
 <h2><a name='command'>COMMAND</a></h2>
 
 <p><a name="mkdoc"> </a>
-<strong>mkdoc::mkdoc</strong> <em>infile outfile ?--css file.css?</em></p>
+<strong>mkdoc::mkdoc</strong> <em>infile outfile ?--css file.css --header header.html --footer footer.html?</em></p>
 
 <blockquote>
 <p>Extracts the documentation in Markdown format from <em>infile</em> and writes the documentation 
@@ -156,13 +158,22 @@ An explanation on how to do this, is given in the section <a href="#install">Ins
 <ul>
 <li><em>infile</em> - file with embedded markdown documentation</li>
 <li><em>outfile</em> -  name of output file extension</li>
-<li><em>--css cssfile</em> if outfile is an HTML file use the given <em>cssfile</em>
+<li><em>--css cssfile</em> if outfile is an HTML file use the given <em>cssfile</em></li>
+<li><em>--footer footer.html</em> if outfile is an HTML file add this footer before the closing body tag</li>
+<li><em>--header header.html</em> if outfile is an HTML file add this header after  the opening body tag
 </li></ul>
 
-<p>If the file extension of the outfile is either html or htm a HTML file is created. If the output file has other 
-  file extension the documentation after <em>#'</em> comments is simply extracted and stored in the given <em>outfile</em>, <em>-mode</em> flag  (one of -html, -md, -pandoc) is not given, the output format is taken from the file extension of the output file, either <em>.html</em> for HTML or <em>.md</em> for Markdown format. This deduction from the filetype can be overwritten giving either <code>-html</code> or <code>-md</code> as command line flags. If as mode <code>-pandoc</code> is given, the Markdown markup code as well contains the YAML header.
-  If infile has the extension .md (Markdown) or -man (Doctools) than conversion to html will be performed, outfile file extension
-  In this case must be .html. If output is html a <em>--css</em> flag can be given to use the given stylesheet file instead of the default style sheet embedded within the mkdoc code.</p>
+<p>If the file extension of the outfile is either html or htm a HTML file is created. If the output
+  file has other file extension the documentation after <em>#'</em> comments is simply extracted and stored
+  in the given <em>outfile</em>, <em>-mode</em> flag  (one of -html, -md, -pandoc) is not given, the output format
+  is taken from the file extension of the output file, either <em>.html</em> for HTML or <em>.md</em> for Markdown format.
+  This deduction from the filetype can be overwritten giving either <code>-html</code> or <code>-md</code> as command line flags.
+  If as mode <code>-pandoc</code> is given, the Markdown markup code as well contains the YAML header.
+  If infile has the extension .md (Markdown) or -man (Doctools) than conversion to html will be performed,
+  the outfile file extension In this case must be .html.
+  If output is html a <em>--css</em> flag can be given to use the given stylesheet file instead of the default
+  style sheet embedded within the mkdoc code. As well since version 0.8.0 a --header and --footer option
+  is available to add HTML code at the beginning and at the end of the document.</p>
 
 <p>Example:</p>
 
@@ -182,8 +193,8 @@ mkdoc::mkdoc mkdoc.tcl mkdoc.md </code></pre>
 
 <h2><a name="example">EXAMPLE</a></h2>
 
-<pre class='code'><code>puts &quot;Hello mkdoc package&quot;
-puts &quot;I am in the example section&quot;</code></pre>
+<pre class='code'><code>puts {Hello mkdoc package}
+puts {I am in the example section}</code></pre>
 
 <h2><a name='format'>BASIC FORMATTING</a></h2>
 
@@ -222,7 +233,7 @@ the following style information:</p>
 Please note, that the embedded style sheet centers level 1 and level 3 headers, there are intended to be used
 for the page title (h1), author (h3) and date information (h3) on top of the page.</p>
 
-<pre class='code'><code>  #'  ## &lt;a name=&quot;sectionname&quot;&gt;Section title&lt;/a&gt;
+<pre class='code'><code>  #'  ## &amp;lt;a name=&amp;quot;sectionname&amp;quot;&amp;gt;Section title&amp;lt;/a&amp;gt;
   #'    
   #'  Some free text that follows after the required empty 
   #'  line above ...</code></pre>
@@ -258,7 +269,7 @@ for the page title (h1), author (h3) and date information (h3) on top of the pag
 <p>This will produce in HTML mode a clickable hyperlink list. You should however create
 the name targets using html code like so:</p>
 
-<pre class='code'><code>## &lt;a name='synopsis'&gt;Synopsis&lt;/a&gt; </code></pre>
+<pre><code> &lt;a name='synopsis'&gt;Synopsis2&lt;/a&gt; </code></pre>
 
 <p><strong>Hyperlinks</strong></p>
 
@@ -278,7 +289,7 @@ the name targets using html code like so:</p>
 
 <pre class='code'><code>#' Some text before
 #'
-#' &gt; this will be indented
+#' &amp;gt; this will be indented
 #'
 #' This will be not indented again</code></pre>
 
@@ -294,7 +305,7 @@ the name targets using html code like so:</p>
 
 <p>Also lists can be indented:</p>
 
-<pre class='code'><code>&gt; - item 1
+<pre class='code'><code>&amp;gt; - item 1
   - item 2
   - item 3</code></pre>
 
@@ -316,7 +327,7 @@ and at the end of the text. Bold is achieved by dublicating those symbols:
 Monospace font appears within backticks.
 Here an example:</p>
 
-<pre class='code'><code>#' &gt; I am _italic_ and I am __bold__! But I am programming code: `ls -l`</code></pre>
+<pre class='code'><code>#' &amp;gt; I am _italic_ and I am __bold__! But I am programming code: `ls -l`</code></pre>
 
 <blockquote>
 <p>I am <em>italic</em> and I am <strong>bold</strong>! But I am programming code: <code>ls -l</code></p>
@@ -328,12 +339,12 @@ Here an example:</p>
 or by embracing the code block with triple backticks on top and on bottom. Here an example:</p>
 
 <pre class='code'><code>#' ```
-#' puts &quot;Hello World!&quot;
+#' puts &amp;quot;Hello World!&amp;quot;
 #' ```</code></pre>
 
 <p>Here the output:</p>
 
-<pre class='code'><code>puts &quot;Hello World!&quot;</code></pre>
+<pre class='code'><code>puts &amp;quot;Hello World!&amp;quot;</code></pre>
 
 <p><strong>Images</strong></p>
 
@@ -411,8 +422,23 @@ in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href
 <li>creating tcllib compatible manual page</li>
 <li>aku changes and fixes to include mkdoc into tcllib's infrastructure</li>
 <li>splitting of command line app to the apps folder</li>
-<li>adding hook package requirement</li>
-<li>changing license to BSD
+<li>adding hook package requirement (benefit?)</li>
+<li>changing license to BSD</li></ul>
+
+</li>
+<li>2023-09-07 Release 0.7.1 - image tag fix </li>
+<li>2023-11-17 Release 0.8.0 
+<ul>
+<li>removed hook package, sorry do not understand what it is doing
+   and what is the benefit and I could not extend my code with this </li>
+<li>adding --header and --footer options</li>
+<li>adding --javascript option, single oder multiple files</li>
+<li>extending --css option, single or multiple files</li>
+<li>support for syntax highlighting using hilightjs Javascript</li>
+<li>fixing issues with triple backtick codes, by fixing markdown package
+   (issue is done on tcllib)</li>
+<li>adding example file in examples to show syntax highlighting</li>
+<li>adding Makefile to build standalone application using tpack (80kb)
 </li></ul>
 
 </li></ul>
@@ -429,9 +455,9 @@ in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href
 
 <h2><a name='license'>LICENSE AND COPYRIGHT</a></h2>
 
-<p>Markdown extractor and converter mkdoc::mkdoc, version 0.7.0</p>
+<p>Markdown extractor and converter mkdoc::mkdoc, version 0.8.0</p>
 
-<p>Copyright (c) 2019-22  Detlef Groth, E-mail: &lt;detlef(at)dgroth(dot)de&gt;</p>
+<p>Copyright (c) 2019-23  Detlef Groth, E-mail: &lt;detlef(at)dgroth(dot)de&gt;</p>
 
 <p>BSD License type:
 Sun Microsystems, Inc. The following terms apply to all files a ssociated
