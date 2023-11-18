@@ -69,6 +69,24 @@ An example using syntax hilighting can be seen here (seems not to work in previe
 
 * [hilight.md](https://github.com/mittelmark/mkdoc/blob/master/examples/hilight.md)
 * [hilight.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/examples/hilight.html).
- 
+
+## Installation
+
+For the  binary  just  copy  the file  mkdoc-version.bin  as mkdoc to a folder
+belonging to your PATH, make the file executable.
+
+## Changes in Comparison to the Tcllib packages
+
+- fix for image tag
+- adding header and footer support
+- adding javascript (single and multiple file support)
+- adding code highlight support
+- adding css support for multiple files
+- fix for library Markdown bugs in handling of code fences
+- adding standalone binary mkdoc.bin
+
+I will try to integrate this into Tcllib package as well but currently it goes
+slowly. Submitted two issues about the mkdoc and the markdown bugs.
+
 
   
