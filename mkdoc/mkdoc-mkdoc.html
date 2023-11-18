@@ -52,12 +52,12 @@ doctools format and optionally converting it into HTML.</p>
 <p>Usage as package:</p>
 
 <pre class='code'><code>package require mkdoc::mkdoc
-mkdoc::mkdoc inputfile outputfile ?--css file.css --header header.html --footer footer.html \
-   --javascript hilightjs|file1.js,file2.js?</code></pre>
+mkdoc::mkdoc inputfile outputfile ?--css file1.css,file2.css? ?--header header.html? ?--footer footer.html? \
+   ?--javascript highlightjs|file1.js,file2.js?</code></pre>
 
 <p>Usage as command line application for extraction of Markdown comments prefixed with <code>#'</code>:</p>
 
-<pre class='code'><code>mkdoc inputcodefile outputfile.md ?--css file.css --header header.html --footer footer.html?</code></pre>
+<pre class='code'><code>mkdoc inputcodefile outputfile.md </code></pre>
 
 <p>Usage as command line application for conversion of Markdown to HTML:</p>
 
