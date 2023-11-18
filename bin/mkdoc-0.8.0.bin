@@ -1,0 +1,1531 @@
+#!/usr/bin/env tclsh
+##############################################################################
+#
+#  Author        : Dr. Detlef Groth
+#  Created By    : Dr. Detlef Groth
+#  Created       : Tue Sep 7 17:58:32 2021
+#  Last Modified : <220303.0625>
+#
+#  Description	 : Standalone deployment tool for Tcl apps using uncompressed tar archives.
+#
+#  Notes         : - tpack application code comes at the end
+#                  - no extra package are required, tar package is embedded 
+#
+#  History       : 2021-09-10 - release 0.1   (two file applications)
+#                  2021-11-09 - release 0.2.0 (single file application)
+#                  2021-11-26 - release 0.2.1 (tar package fix)
+#                  2022-02-16 - release 0.3.0 (lz4 compression support)
+#                  
+#	
+##############################################################################
+#
+#  Copyright (c) 2021-2022 Dr. Detlef Groth.
+# 
+#  License:      MIT
+# 
+##############################################################################
+
+# tar.tcl -- take form tar.tcl from tcllib
+#
+#       Creating, extracting, and listing posix tar archives
+#
+# Copyright (c) 2004    Aaron Faupell <afaupell@users.sourceforge.net>
+# Copyright (c) 2013    Andreas Kupries <andreas_kupries@users.sourceforge.net>
+#                       (GNU tar @LongLink support).
+#
+# See the file "license.terms" for information on usage and redistribution
+# of this file, and for a DISCLAIMER OF ALL WARRANTIES.
+# 
+# RCS: @(#) $Id: tar.tcl,v 1.17 2012/09/11 17:22:24 andreas_kupries Exp $
+
+package require Tcl 8.4
+package provide tar 0.11
+
+namespace eval ::tar {}
+
+proc ::tar::parseOpts {acc opts} {
+    array set flags $acc
+    foreach {x y} $acc {upvar $x $x}
+    
+    set len [llength $opts]
+    set i 0
+    while {$i < $len} {
+        set name [string trimleft [lindex $opts $i] -]
+        if {![info exists flags($name)]} {
+	    return -errorcode {TAR INVALID OPTION} \
+		-code error "unknown option \"$name\""
+	}
+        if {$flags($name) == 1} {
+            set $name [lindex $opts [expr {$i + 1}]]
+            incr i $flags($name)
+        } elseif {$flags($name) > 1} {
+            set $name [lrange $opts [expr {$i + 1}] [expr {$i + $flags($name)}]]
+            incr i $flags($name)
+        } else {
+            set $name 1
+        }
+        incr i
+    }
+}
+
+proc ::tar::pad {size} {
+    set pad [expr {512 - ($size % 512)}]
+    if {$pad == 512} {return 0}
+    return $pad
+}
+
+proc ::tar::seekorskip {ch off wh} {
+    if {[tell $ch] < 0} {
+	if {$wh!="current"} {
+	    return -code error -errorcode [list TAR INVALID WHENCE $wh] \
+		"WHENCE=$wh not supported on non-seekable channel $ch"
+	}
+	skip $ch $off
+	return
+    }
+    seek $ch $off $wh
+    return
+}
+
+proc ::tar::readHeader {data} {
+    binary scan $data a100a8a8a8a12a12a8a1a100a6a2a32a32a8a8a155 \
+                      name mode uid gid size mtime cksum type \
+                      linkname magic version uname gname devmajor devminor prefix
+
+    foreach x {name type linkname} {
+        set $x [string trim [set $x] "\x00"]
+    }
+    foreach x {uid gid size mtime cksum} {
+        set $x [format %d 0[string trim [set $x] " \x00"]]
+    }
+    set mode [string trim $mode " \x00"]
+
+    if {$magic == "ustar "} {
+        # gnu tar
+        # not fully supported
+        foreach x {uname gname prefix} {
+            set $x [string trim [set $x] "\x00"]
+        }
+        foreach x {devmajor devminor} {
+            set $x [format %d 0[string trim [set $x] " \x00"]]
+        }
+    } elseif {$magic == "ustar\x00"} {
+        # posix tar
+        foreach x {uname gname prefix} {
+            set $x [string trim [set $x] "\x00"]
+        }
+        foreach x {devmajor devminor} {
+            set $x [format %d 0[string trim [set $x] " \x00"]]
+        }
+    } else {
+        # old style tar
+        foreach x {uname gname devmajor devminor prefix} { set $x {} }
+        if {$type == ""} {
+            if {[string match */ $name]} {
+                set type 5
+            } else {
+                set type 0
+            }
+        }
+    }
+
+    return [list name $name mode $mode uid $uid gid $gid size $size mtime $mtime \
+                 cksum $cksum type $type linkname $linkname magic $magic \
+                 version $version uname $uname gname $gname devmajor $devmajor \
+                 devminor $devminor prefix $prefix]
+}
+proc ::tar::untar {tar args} {
+    set nooverwrite 0
+    set data 0
+    set nomtime 0
+    set noperms 0
+    set chan 0
+    parseOpts {dir 1 file 1 glob 1 nooverwrite 0 nomtime 0 noperms 0 chan 0} $args
+    if {![info exists dir]} {set dir [pwd]}
+    set pattern *
+    if {[info exists file]} {
+        set pattern [string map {* \\* ? \\? \\ \\\\ \[ \\\[ \] \\\]} $file]
+    } elseif {[info exists glob]} {
+        set pattern $glob
+    }
+
+    set ret {}
+    if {$chan} {
+	set fh $tar
+    } else {
+	set fh [::open $tar]
+	fconfigure $fh -encoding binary -translation lf -eofchar {}
+    }
+    while {![eof $fh]} {
+        array set header [readHeader [read $fh 512]]
+	HandleLongLink $fh header
+        if {$header(name) == ""} break
+	if {$header(prefix) != ""} {append header(prefix) /}
+        set name [string trimleft $header(prefix)$header(name) /]
+        if {![string match $pattern $name] || ($nooverwrite && [file exists $name])} {
+            seekorskip $fh [expr {$header(size) + [pad $header(size)]}] current
+            continue
+        }
+
+        set name [file join $dir $name]
+        if {![file isdirectory [file dirname $name]]} {
+            file mkdir [file dirname $name]
+            lappend ret [file dirname $name] {}
+        }
+        if {[string match {[0346]} $header(type)]} {
+            if {[catch {::open $name w+} new]} {
+                # sometimes if we dont have write permission we can still delete
+                catch {file delete -force $name}
+                set new [::open $name w+]
+            }
+            fconfigure $new -encoding binary -translation lf -eofchar {}
+            fcopy $fh $new -size $header(size)
+            close $new
+            lappend ret $name $header(size)
+        } elseif {$header(type) == 5} {
+            file mkdir $name
+            lappend ret $name {}
+        } elseif {[string match {[12]} $header(type)] && $::tcl_platform(platform) == "unix"} {
+            catch {file delete $name}
+            if {![catch {file link [string map {1 -hard 2 -symbolic} $header(type)] $name $header(linkname)}]} {
+                lappend ret $name {}
+            }
+        }
+        seekorskip $fh [pad $header(size)] current
+        if {![file exists $name]} continue
+
+        if {$::tcl_platform(platform) == "unix"} {
+            if {!$noperms} {
+                catch {file attributes $name -permissions 0[string range $header(mode) 2 end]}
+            }
+            catch {file attributes $name -owner $header(uid) -group $header(gid)}
+            catch {file attributes $name -owner $header(uname) -group $header(gname)}
+        }
+        if {!$nomtime} {
+            file mtime $name $header(mtime)
+        }
+    }
+    if {!$chan} {
+	close $fh
+    }
+    return $ret
+}
+proc ::tar::HandleLongLink {fh hv} {
+    upvar 1 $hv header thelongname thelongname
+
+    # @LongName Part I.
+    if {$header(type) == "L"} {
+	# Size == Length of name. Read it, and pad to full 512
+	# size.  After that is a regular header for the actual
+	# file, where we have to insert the name. This is handled
+	# by the next iteration and the part II below.
+	set thelongname [string trimright [read $fh $header(size)] \000]
+	seekorskip $fh [pad $header(size)] current
+	return -code continue
+    }
+    # Not supported yet: type 'K' for LongLink (long symbolic links).
+
+    # @LongName, part II, get data from previous entry, if defined.
+    if {[info exists thelongname]} {
+	set header(name) $thelongname
+	# Prevent leakage to further entries.
+	unset thelongname
+    }
+
+    return
+}
+
+# lz4unpack.tcl -- take lz4unpack from wiki
+namespace eval ::lz4 {
+    variable version 0.2.4
+    # The following variable will be true in Jim Tcl and false in Tcl 8.x.
+    variable jim [expr {![catch {info version}]}]
+}
+
+if {$::lz4::jim} {
+    proc ::lz4::byte-range {bytes start end} {
+        tailcall string byterange $bytes $start $end
+    }
+} else {
+    # Benchmarking shows this version to be faster than a tailcall in Tcl 8.6.7.
+    proc ::lz4::byte-range {bytes start end} {
+        return [string range $bytes $start $end]
+    }
+}
+
+proc ::lz4::decode-block {data ptr endPtr window} {
+    set result {}
+    while 1 {
+        if {![binary scan $data "@$ptr cu" token]} {
+            error {data truncated}
+        }
+        incr ptr 1
+        set litLen   [expr {($token >> 4) & 0x0F}]
+        set matchLen [expr {$token & 0x0F}]
+        if {$litLen == 15} {
+            while 1 {
+                if {![binary scan $data "@$ptr cu" byte]} {
+                    error {data truncated}
+                }
+                incr ptr 1
+                incr litLen $byte
+                if {$byte < 255} break
+            }
+        }
+        if {![binary scan $data "@$ptr a$litLen" literals]} {
+            error {data truncated}
+        }
+        incr ptr $litLen
+        append window $literals
+        append result $literals
+        # The last sequence is incomplete.
+        if {$ptr < $endPtr} {
+            if {![binary scan $data "@$ptr su" offset]} {
+                error {data truncated}
+            }
+            incr ptr 2
+            if {$matchLen == 15} {
+                while 1 {
+                    if {![binary scan $data "@$ptr cu" byte]} {
+                        error {data truncated}
+                    }
+                    incr ptr 1
+                    incr matchLen $byte
+                    if {$byte < 255} break
+                }
+            }
+            incr matchLen 4
+            incr offset -1
+            set endOffset [expr {
+                $offset - $matchLen > 0 ? $offset - $matchLen : 0
+            }]
+            set overlapLen [expr {
+                $offset - $matchLen > 0 ? 0 : $matchLen - $offset
+            }]
+            set match [byte-range $window end-$offset end-$endOffset]
+            set matchRepeated [string repeat $match [expr {
+                ($overlapLen / ($offset - $endOffset + 1)) + 2
+            }]]
+            set matchWithOverlap [byte-range $matchRepeated 0 $matchLen-1]
+            append window $matchWithOverlap
+            append result $matchWithOverlap
+        }
+        if {$ptr == $endPtr} break
+        if {$ptr > $endPtr} {
+            error {read beyond block end}
+        }
+    }
+    return [list $ptr $window $result]
+}
+
+proc ::lz4::decode-frame {data ptr verify} {
+    # Decode and validate the header.
+    if {![binary scan $data "@$ptr i" magic]} {
+        error {data truncated}
+    }
+    incr ptr 4
+    set fieldsStartPtr $ptr
+    if {$magic == 0x184D2204} {
+        # Normal frame.
+    } elseif {(0x184D2A50 <= $magic) && ($magic <= 0x184D2A5F)} {
+        # Skippable frame.
+        if {![binary scan $data "@$ptr iu" frameSize]} {
+            error {data truncated}
+        }
+        incr ptr 4
+        incr ptr $frameSize
+        return [list $ptr {}]
+    } else {
+        error "unexpected magic number: $magic"
+    }
+    set flags {}
+    if {![binary scan $data "@$ptr cu cu" flags blockDescr]} {
+        error {data truncated}
+    }
+    incr ptr 2
+    set flagsReserved      [expr {($flags & 0b00000011) == 0}]
+    set hasContentChecksum [expr {($flags & 0b00000100) == 0b00000100}]
+    set hasContentSize     [expr {($flags & 0b00001000) == 0b00001000}]
+    set hasBlockChecksums  [expr {($flags & 0b00010000) == 0b00010000}]
+    set blockIndep         [expr {($flags & 0b00100000) == 0b00100000}]
+    set version            [expr {($flags & 0b11000000) == 0b01000000}]
+    if {!$flagsReserved} {
+        error {FLG reserved bits aren't zero}
+    }
+    if {!$version} {
+        error {frame version isn't "01"}
+    }
+    set blockDescrReserved [expr {($blockDescr & 0b10001111) == 0}]
+    set blockMaxSize       [expr {$blockDescr >> 4}]
+    if {!$blockDescrReserved} {
+        error {BD reserved bits aren't zero}
+    }
+    if {$blockMaxSize < 4} {
+        error "invalid block maximum size ($blockMaxSize < 4)"
+    }
+    if {$hasContentSize} {
+        if {![binary scan $data "@$ptr wu" uncompressedSize]} {
+            error {data truncated}
+        }
+        incr ptr 8
+    }
+    if {![binary scan $data "@$ptr cu" headerChecksum]} {
+        error {data truncated}
+    }
+    if {$verify} {
+        if {![binary scan $data \
+                          "@$fieldsStartPtr a[expr {$ptr - $fieldsStartPtr}]" \
+                          header]} {
+            error {can't scan header fields to verify checksum\
+                   (this shouldn't happen)}
+        }
+        if {(([::xxhash::xxhash32 $header 0] >> 8) & 0xff) != $headerChecksum} {
+            error {frame header doesn't match checksum}
+        }
+    }
+    incr ptr 1
+
+    # Decode the blocks.
+    set window {}
+    while 1 {
+        if {![binary scan $data "@$ptr iu" blockSize]} {
+            error {data truncated}
+        }
+        incr ptr 4
+        set compressed [expr {!($blockSize >> 31)}]
+        set blockSize [expr {$blockSize & 0x7fffffff}] ;# Zero the highest bit.
+        if {$blockSize == 0} break
+
+        if {$compressed} {
+            lassign [decode-block $data \
+                                  $ptr \
+                                  [expr {$ptr + $blockSize}] $window] \
+                    ptr \
+                    window \
+                    decodedBlock
+            if {$blockIndep} {
+                set window {}
+            } else {
+                set window [string range $window end-0xFFFF end]
+            }
+        } else {
+            if {![binary scan $data "@$ptr a$blockSize" decodedBlock]} {
+                error {data truncated}
+            }
+            incr ptr $blockSize
+        }
+        append result $decodedBlock
+    }
+
+    # Decode the checksum.
+    if {$hasContentChecksum} {
+        if {![binary scan $data "@$ptr iu" contentChecksum]} {
+            error {data truncated}
+        }
+        incr ptr 4
+        if {$verify && ([::xxhash::xxhash32 $result 0] != $contentChecksum)} {
+            error {decoded data doesn't match checksum}
+        }
+    }
+
+    return [list $ptr $result]
+}
+
+proc ::lz4::decode {data verify} {
+    if {$verify && ([info commands ::xxhash::xxhash32] eq {})} {
+        error {asked to verify checksums but [::xxhash::xxhash32] is absent}
+    }
+    set ptr 0
+    set result {}
+    set len [string length $data]
+    while {$ptr < $len} {
+        lassign [decode-frame $data $ptr $verify] ptr frame
+        append result $frame
+    }
+    return $result
+}
+
+proc ::lz4::assert-equal {actual expected} {
+    if {$actual ne $expected} {
+        if {[string length $actual] > 200} {
+            set actual [string range $actual 0 199]...
+        }
+        if {[string length $expected] > 200} {
+            set expected [string range $expected 0 199]...
+        }
+        error "expected \"$expected\",\n\
+               but got \"$actual\""
+    }
+}
+
+proc ::lz4::file-test {path canHash} {
+    if {![file exists $path]} {
+        puts stderr "can't find file \"$path\" -- skipping test"
+        return
+    }
+    # Can't use -ignorestderr because Jim Tcl doesn't support it.
+    if {[catch {exec lz4 --version 2>@1}]} {
+        puts stderr {can't run lz4 -- skipping test}
+        return
+    }
+    set ch [open $path rb]
+    set data [read $ch]
+    close $ch
+    set ch [open [list |lz4 -c -9 $path]]
+    fconfigure $ch -translation binary
+    set dataCompressed [read $ch]
+    close $ch
+    assert-equal [decode $dataCompressed 0] $data
+    if {$canHash} {
+        assert-equal [decode $dataCompressed 1] $data
+    }
+}
+
+proc ::lz4::value-test {compressed original canHash} {
+    assert-equal [decode $compressed 0] $original
+    if {$canHash} {
+        assert-equal [decode $compressed 1] $original
+    }
+}
+
+proc ::lz4::unzip {infile outfile {verify false}} {
+    set ch [open $infile rb]
+    set data [read $ch]
+    close $ch
+    set out [open $outfile w 0600]
+    fconfigure $out -translation binary
+    puts -nonewline $out [::lz4::decode $data $verify]
+    close $out
+}
+
+
+package provide starkit 0.1
+
+namespace eval starkit {
+    proc startup { } {
+        lappend ::auto_path [file join [file dirname [info script]] lib]
+        return starkit
+    }
+}
+proc getTempDir {} {
+    if {[file exists /tmp]} {
+        # standard UNIX
+        return /tmp
+    } elseif {[info exists ::env(TMP)]} {
+        # Windows
+        return $::env(TMP)
+    } elseif {[info exists ::env(TEMP)]} {
+        # Windows
+        return $::env(TEMP)
+    } elseif {[info exists ::env(TMPDIR)]} {
+        # OSX
+        return $::env(TMPDIR)
+    }
+}
+set rname [file rootname [info script]]
+set lzmode false
+if {[llength [info commands ::lz4::*]] > 0}  {
+    set lzmode true
+}
+if {[file exists $rname.vfs]} {
+    catch {
+        package forget tar
+    }   
+    source [file join $rname.vfs main.tcl]
+} else {
+    set tail [file tail $rname]
+    set time [file mtime [info script]]
+    set appname [info script]
+    set tmpdir [getTempDir]
+    set f [open $appname]
+    fconfigure $f -translation binary
+    set data [read $f][close $f]
+    set ctrlz [string first \u001A $data]
+    if {$ctrlz > 0} {
+        # todo check file dates
+        ## standalone file with attached tar archive
+        set script [string range $data 0 [expr {$ctrlz - 2}]]
+        set archive [string range $data [incr ctrlz] end]
+        set scriptfile [file join $tmpdir [file rootname $appname].ttcl]
+        set tarfile [file join $tmpdir [file tail [file rootname $appname]].ttar]
+        set lzfile [file join $tmpdir [file tail [file rootname $appname]].ttar.lz4]
+        set untar false
+        if {[file exists $tarfile]} {
+            set ttime [file mtime $tarfile]
+            if {$ttime < $time} {
+                # script is newer than tar file
+                set untar true
+            }
+        } else {
+            set untar true
+        }
+        if {$untar} {
+            if {$lzmode} {
+                if {[file exists $lzfile]} {
+                    file delete $lzfile
+                }
+                set tmp [open $lzfile w 6000]
+                fconfigure $tmp -translation binary
+                puts -nonewline $tmp $archive
+                close $tmp
+                lz4::unzip $lzfile $tarfile
+            } else {
+                set tmp [open $tarfile w 0600]
+                fconfigure $tmp -translation binary
+                puts -nonewline $tmp $archive
+                close $tmp
+            }
+        }
+    } else {
+        set tarfile [file rootname [info script]].ttar
+        if {![file exists $tarfile]} {
+            puts "Error: File $tarfile does not exists"
+            exit 0
+        }
+    }
+    set ttime [file mtime $tarfile]
+    set appdir [file join $tmpdir $tail-$ttime]
+    foreach dir [glob -nocomplain [file join $tmpdir $rname]*] {
+        if {$dir ne $appdir && [file isdir $dir]} {
+            file delete -force $dir
+        } 
+    }
+    if {![file exists $appdir]} {
+        file mkdir $appdir
+        tar::untar $tarfile -dir $appdir
+    }
+    set vfspath [lindex [glob [file join $appdir *]] 0]
+    catch {
+        package forget tar
+    }   
+    if {[file exists [file join $vfspath tpack.tcl]]} {
+        source [file join $vfspath tpack.tcl]
+    } elseif {[file exists [file join $vfspath main.tcl]]} {
+        source [file join $vfspath main.tcl]
+    } else {
+        error "Neither tpack.tcl or main.tcl found in tar archive!"
+    }
+    
+}
+
+## ARCHIVE LOADER END
+#!/bin/sh
+# -*- tcl -*- A Tcl comment, whose contents don't matter \
+exec tclsh "$0" "$@"
+
+package require Tcl 8.6
+package require mkdoc
+
+set Usage [string map [list "\n    " "\n"] {
+    Usage: __APP__ ?[--help|version]? INFILE OUTFILE ?[--css file.css]?
+           ?[--header header.html]? ?[--footer footer.html]?
+
+    mkdoc - code documentation tool to process embedded Markdown markup
+            given after "#'" comments
+
+    Positional arguments (required):
+    
+        INFILE - input file with:
+               - embedded Markdown comments: #' Markdown markup
+               - pure Markdown code (file.md)
+
+        OUTFILE - output file usually HTML or Markdown file,
+                  file format is deduced on file extension .html or .md,
+                  if OUTFILE is the `-` sign output is written to stdout
+
+    Optional arguments:
+
+        --help            - display this help page, and exit
+        --version         - display version number, and exit
+        --license         - display license information, and exit
+        --css CSSFILE     - use the specified CSSFILE instead of internal default 
+                            mkdoc.css
+        --header HTMLFILE - file with HTML code to be included after the body tag
+        --footer HTMLFILE - file with HTML code to be included before the closing
+                            body tag                            
+    Examples:
+
+        # create manual page for mkdoc.tcl itself 
+        __APP__ mkdoc.tcl mkdoc.html
+
+        # create manual code for a CPP file using a custom style sheet
+        __APP__ sample.cpp sample.html --css manual.css
+
+        # extract code documentation as simple Markdown
+        # ready to be processed further with pandoc
+        __APP__ sample.cpp sample.md 
+
+        # convert a Markdown file to HTML
+        __APP__ sample.md sample.html
+        
+        # convert a Markdown file to HTML with own css, header and foot
+        __APP__ sample.md sample.html --css my.css --footer foot.html --header head.html
+        
+    Author: @ Dr. Detlef Groth, Schwielowsee, 2019-2023
+
+    License: BSD
+}]
+
+if {[lsearch -exact $argv {--version}] > -1} {
+    puts "[package provide mkdoc]"
+    return
+}
+if {[lsearch -exact $argv {--license}] > -1} {
+    puts "BSD License - see manual page"
+    return
+}
+
+if {[llength $argv] < 2 || [lsearch -exact $argv {--help}] > -1} {
+    set usage [regsub -all {__APP__} $Usage [info script]]
+    puts $usage
+    exit 0
+    
+} elseif {[llength $argv] >= 2 && [lsearch $argv {--run}] == 1} {
+    mkdoc::run $argv 
+} elseif {[llength $argv] == 2} {
+    if {[regexp {^-.} [lindex $argv 1]]} {
+	puts stderr "Error: wrong outfile name [lindex $argv 1]"
+	exit 1
+    }
+    mkdoc::mkdoc [lindex $argv 0] [lindex $argv 1]
+
+} elseif {[llength $argv] > 2} {
+    mkdoc::mkdoc {*}$argv
+}
+
+exit
+return
+"MdPø	 ÿmkdoc.vfs/main.tcl  >õ 100600  1750    D77   ÿ14526077032 13073   0Š >  ßustar 00groth       ¤ólappend auto_path [file join ÿdirname [info script]] lib]
+ö ¤ ÷ Alib/  8n100644 S63675	 O5214 ÿUÿ# -*- mode: tcl ; fill-column: 80 -*-
+# :³
+#  Author  õ: Dr. Detlef Groth
+#  Created$ ò2Fri Nov 15 10:20:22 2019
+#  Last Modified : <231118.0909>
+#
+#  De¼ó=ion	 : Command line utility and package to extract Markdown documentation 
+#œ  ÿ/from programming code if embedded as after comment sequence #'S Ámanual pages¢ rinstall… ñ of Tcl files as modules.N 2Copè UadaptD òdgw/dgwutils.tcl4sHistoryà :oÿ-11-08 version 0.1g * 2* 2* ‡20-02-26T 3* ÿ11-10 Release 0.4* 82-3* ¯5 (rox2md)3 w2-02-09] 6* G4-XX* ¯7 (minimal^ x3-09-074 ÿ .1 (img tag fix: W11-18: 8.0 
+#	™>ò
+# Copyright (c)ñ]2023 £ñ, E-mail: detlef(at)d'	ñ1(dot)de
+# 
+# This library is free software; you can use, modify,åò'redistribute it for
+# any purpose, provided that existrÂ ónotices are retained in all
+# copiRA Cthis3 ñ	 is included verbatim in€ ˜ 1iondæ Ö 6 is% ÿged WITHOUT ANY WARRANTY; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#>ñ' ---
+#' title: +!:: ‘¹
+#' author:Ëó, Schwielowsee, Germany
+#' cssJ G.csse ñ
+#' <center> Manual: [short (doctools)]( ò .html) - [long   -# #</T ã
+#'
+#' ## NAME !**, Õ Q**  -NXand c6¸application.æand format 
+#'ù
+I5bsource0Î¦written in‚dor
+#' h Qand oÛ±ally converÓit into HTML.é ñ## <a name='toc'></a>TABLE OF CONTENTS
+ô'  - [SYNOPSIS](#synopsis) ö DESCRIPTION](#df" £COMMAND](#? !  \ u1](# ! ’run](#run õ- [EXAMPLE](#example òBASIC FORMATTING](#’" ƒINSTALLA· S ÖSEE ALSO](#seX öCHANGES](#changeµTODO](#todoE ’AUTHOR](#- ñLICENSE AND COPYRIGHT](#licenso Ÿ¨w$'>ŒD</a>¤„Usage as½:B d```
+#' ‰ require½9
+#' a input4out a?--cssfâ.css --header  ƒ¢ --footer   \'‚  --java‚	ö hilightjs|file1.js,file2.js?· 	Ù :¯	y4for¨		®	a	¡s prefixedt[ `#'`!uú Kcodeş ?.mdhÒ "Âa	Ò É¾ wfile.md»†¿ oÊ¶ÑÊcghlighËQname1] [name2û x(''>CÖ‘‘sUí&or^¯´nd  as well5sl$thyû if desired.
+#' Them ©inside theÑ{must beŠ1the¥ character_ ŒTexten—  ¡determinesw û.ƒFD ös can bei either `.md` forû E r, `.man t Q or `] Chtmlw¼ dlatterwŸ gtcllibj r¶ ^ ë ƒs to be ›rI ù + " o »is *.md*ã- Ç k0 Qhtml*1óthere will be simply a#ˆ³aÇ Ato ae$€T« `bS.tcl`~x³directly usy consolèÉ’An explanuò
+on how to do this, is giv5…e'[I5ñl#'>¹”Ê‘"Ñ 3">  ­1*inyo–ƒC$?*ç2> E’Kzí¥ˆ _write> İ c  to *± *Y 3, D}
+™  or HTMLit
+#' > -ü 1* -xmO‚ -€ !- ¥	3 ofYM ÷2 ¡cssfile* i0 }Sis an¨ bile usœ$*3 J ¼ÃQ 
+1addz1 b beford ÷closing body tage =e 8 @	>pene  ÆA> If% 7.è4 isêÄ ÎR is c.S >Ó _ Chas ü	n 
+ªÿA_#'_P1entgä!ed¼bstoredh Ó¼_¿ ò_, *-mode* flag  (one of -html, -md, -pandoc) â#,› É Æh cs takeåtÄA•,CFf#orŠ	`¡) #Bdedu«¶v Dtype2Doverdgivingv `í ­` or `-md`2
+Sflagso ÃIf as mode ``8Vbmarkup•)BtainFDYAML>2If ş2 ha$ 9T.md (] ´) or -man (Vh) thanh"to–Œ¢performed,n íˆm "Inš6cas²	ş"isf aLL(.; to>’stylesheeE©4ead_rdefault§ ,  - CwithÔNg3. A‘	WsincehV8.0 a7Eand ¯ıl òis available to addqcode at÷‘beginningf &en¾ ¡+ØEf:İ>_"ê C.tcl
+ Mhtml„ % #mdÑ\```
+
+Ï~Tcl 8.6 Myaml. / H‘ Íã
+namespace eva­ ± {
+    vari]ñdeindent [list \n\t \n "\n    " \n]1  6 õhtmltemplate [string map $P Á{
+	<!DOCTYPEšE>
+	< £ead>
+	<metÆñ"viewport" content="width=device- û, initial-scale=1.0"H WtitleE $¹( )0 Ù1  2 = >M "</ 
+	$style&/F    2 =T)
+	</Ubody>8 / `) }„µáyz M 1 M j    </w "</šm Ÿhtmlstarté„h1 class) !h12) ]*  Z)</h2+ 9datS Cdate' ± &{³ Òô	{
+	    margin-left: 10%; Crigh * ô	font-family: Palatino, " © Linotype" óT STD", "Book Antiqua", Georgia, serifd 2maxíä: 90%;
+	}
+	pre­ 	ƒ ‘Monaco, Cn¢as, "Liber\±Mono", Menl$ ±urier, mono\ Bd} 
+
+pr¸A$ {¡_args}E ¦D
+”®
+ †
+ ë
+ Óarray set argÔ[&""k a œ2 ""m
+J Q$argsb Bif {a!§$']] eq  İá]} {
+	return -ÊÔerror "Error:t!anıómust have differenª} 1s!"˜ } qset out	Ahtml ³ • 3 in(.md .man¨ (
+Q J	S n !inm ù n !o R 	n Z 6sety"÷ ÷if [catch {
+	ope! r6 s} infh]´O    ƒaCannotŒ® r: $infhj g} elseG 2set°FfalsûÂwhile {[gets@ òa] >= 0¸ ó{[regexp {^\s*#' +#±± +"(.*)"} $Ü3->  	œ 	C	   Ç 4 Œ r
+		} i K •$ 1: $U   , q#set ilîS[readG x OBinfh= Q3  ‘# Process @%Z$ .\nØ -I ScloseÉ ! . Sif {$ëÜeq "code" && W?(.*)
+/mdÆ ,mdÃ z i"Ö U ß 
+ ëset yamldict \&[ ¤ ³C  "DÔájCtailu†rootnameÃ>]]"N j> NN Ódate   [clockS ¢seconds] -üÎ "%Y-%m-%d"]J bcss   ’qò p?  "¤  Ÿ ‰< ]À!md€2 Ayamlo
+¿¥Ltext3 hasyaml2  E0 c$ë„ Ulnr 0	qforeach®– [split $—8\n"ÆF…ncr lnr D  õf {$lnr < 5 && !$ì 	`3---XR
+%6truãÆ^ &P] )		Å #1!amerge Ñ 1Á[yaml::yaml2  Wtext] 	Ó 
+ÆÔ i !0 3setãõregsub -all {!\[\]\((.+?)\ñó	"<img src=\"\\1\"></img>¦	 ­î$”B	k²Ëüarg(--css) ne ""ÿ xset cssÊº%cs¸J -",¹° (Ñ"<link rel=\"¼úsheet\" href=\"$cs\">“½ A    ÿâ rcss $cs¹
+áø î Mõ , Deq "==tjs,” n ;  ÷"https://unpkg.com/@• ò/cdn-assets@11.9.0/]ò	/atom-one-light.min.css"S <ò?srcn  Œ b bjs"></Q j  A!-- 2kÿ loaded extra --2  K  œ ßlanguages/tcl  IFize Ü /jsŸ 	e>hljs.. oAll();ï ¶I!jsIy ”j”‚›Ÿa a\"$js\:˜
+k ’	Ÿ‰ " $g Ÿ
+B è‹!³	T's5 ğ_[HÂ2 9 r] İ- Ö>nfh6 *
+ï ï 5 ï 2 ï - ï /Â	# Regenerató~	F2nalA£(to reportÖ¡nal CSS reTce)
+	fF ”"---\n"
+	¡k [lsort -R XFkeysW$]]oUìC{k}:5 #gepI 1$k]h =}
+	6 R---"
+™ €! < &>$Á<š>¼
+íÎn=tmlgp 
+ Acss]Åc İâ} {
+		# Switch\Ë‘ (­ernal linkõÃ :cssò»= Œò[Markdown::convert $¹
+? a## fix+urly braÛ*ñsues in backtickK chu² q l	m‰B'\{"¢! {KÉ:'}]UJ Ï(\[^'\]+)\}'T R\1'}]
+ 	_½€jw 0644Ì#eyŒÁ/S$key); 
+8J$keym 
+ÄRif {!ü\¤Odatem — d;g	… 	^ó
+[subst -nobackslashes -noé*2s $* 
+P Aputsd 	‹{ŸÉ B	ü	p ’ [ 	! 
+„½ æ &se™Ã 	Š À5out ¢ÎÏ U\ %	 ‘ 
+" D}
+}
+y#ö#1runº{*2-6runò#C%³
+#' > Sourc"hode in©4run"À+–0!Ä$Ş-Twith 
+œñation. Below follow#b %SwhicháY #ruU m`tclshª‘tcl --runT+Ñ("a #">–,$5
+#'(¢uts {Hello]  Ê} SI am S ´ & soj€d {argvoÈq[lindex•	2v 0°úrllength d] == 3B ©İ? 2? ¶sset t 1;> üà bset ex\   Tk	¬h
+°,©	‹'ASif {$å Aeq "š1\
+	 ¸1-no™!ÀÓ\s+#{2,3}\s.+i Â 6_	‡ ‡ 	† ó"^\\s*#'.*\\s# demo: Ä "‡ §† ª 	Bq ¿\s+>?\s*```ï  Š # ‰ &!M:: $|    brea 
+#M!2 N8¡ 5(.+ÛO-> c>E <"$c‰›
+3	UŒ ht > -1D    2  !up—†idletask9 ø&ë[expr {$t*1000¯Ñ    destroy .1 ¹ Ÿ‡'],'>2³q
+#' Fore+qmplete ¼"f/D t9âommands consul8Vbasic{´syntax at [Pÿdaringfireball.net]( ³/projects/mÙ/T ò ). 
+#' Here jus~ Cmostƒ äessentials  to 	ü6m/bC-P;9Rnote,ú6ñ Qblockˆ[‘are separ;±by an empty‰,A% ½%is’2ingm'Ais a3 /²and nothing‚-1“
+#' **Titã„Author**Ó ŸÚN setò%..
+(éin a so calledØ'…T€*';0yused by» ›Ber [~) Q.org)¹ahandleX%3ousÊ5s’/rlater p‹aing if49×bct not‡,'bu¨<Bcode¢Eyour‹	OAä  5sÌònds with three hyphens.ˆi²	 ñ'ò:–­=8@8& -FÑ oÙ'’!erà'Ö:…: ]8v ‡ á
+#' Those fourŠss produ¢
+3two mon topÙ 3. Y¯:aextendñ ˜Ôwould like to¸
+† ×ñ í	zÁother tools,‚instance™PÏ+œ(5
+#'– aspecif©I Ÿóf¢)£ by addingû083ing9 "inCion:>TeÛ\¤css: tufte;:‹ œ ìBthe İĞ 4 is 2q-!it -wo space5,~Hésu—Bader^<
+b6ôthe hash symbol, singl tQ±for level 1“ing, doub( e# 2# "etøÆ<the‘ò õ:so ÷@{ 3X 1ers÷,!re.QintenW=Ao be—21
+#'†‘the page º(c (h1),œQ (h3)@3 SE Ç A  #'µn!se.rname">S { Ï4  ¢ ¡Some free eày/6theó¹1#'  ‘ above ..¢ N=i1ÌDœ:er.“¨%aÃ ` `Í9`fragment^ereafer€4/9'edÈ%(.3theáñD ¨!shŒ"on\4¯ 6andù×	1. LÜ ›!er…reserved3 $!FList bC.!ei×TusingW" o}s¨a‘¥4‹Ã #' - item 1 2 3]±!rersoutput:×= L  I  F R
+#' AX#al2
+$be helpcvbj t(-$of˜,s< Kš ä D## T? C×,$?¶ œ[Synopsis™= óD›= $ Câ
+= ˆa= ‚	sŞ<ö<½ ,(	b"in©Ámode a clickß QhyperÁIlist¼showeverÚ
+ŸE1tar%'M"tmW{#soOÙ ¸6'|$'><b2</a> ÉH’ Î 	…
+332… a [Link—W](URL2ÀALet'n&Ak to¨ÔTcler's Wiki:' M  ^üwiki.tcl-lang.org/g /s:C Iğ/: ƒachievedQthe g@5lr signË "#'¶±bbeforeÉ " >_
+Nb¾•$ œ" $noU$ed again
+† È 
+ì| ?1lsoş‡,ed>ß  • —>fssD Ø‚FontfaceÕõ Italic font fac†5rrequestòáßÁstars or undÒeÕ x=s3Ötext. Bold isD¡by dublica’tÂY	î $ M“.¬ bappearÂåÉ	Ã
+uí ImqI am _iÿ _Ò Â_bold__! But ÒCÁcode: `ls -l!S ?. S /¬CCode¨Œ
+ ^Ò„{Òsor moreâ
+!th‚JsequenceÃor by embrac–¯ ŒetripleM=Óand on bottomòz
+1 ")sWorld!"$  Ô! TI  NCImag÷`>ñ you insist on i  : inÅ, n~+inĞa&Á ti”1The.!s ƒô73AwithqQxclamv Ç.4Q#' ![¬ 1 ca
+F$](L.pngT¡@"of“ğ¤is a good ¹for usag) = Ô2not  òtool. Don't overus	ØpossibilitiesØBñ , sometimes les;Qmore.…¢Write clea¡concise, db òuse fancy visual effect\äSncludæT ñC˜	rrast toš1arda7dowQƒupport iI 1. UÄ
+ÁA# # % "tDmd"`õ3
+#'Xl4 oû·"s.ÑSmight…1fulz
+C the sameÜ h¨Ã or a footerİeç1relÉ6filŞv'a Hll'>$GqE<3€ÇzA $edv;2appĞ!on§ 7s a¸ND. It¡Us the¡, cmdline,.œAtext¶N† sùhBÄAinstØ.F	I ±  	ñis easiest by downlo®š Ó0[N†-0.6.binŒ	ò raw.githubusercÃf(ùmittelmark/DGTcl/master/bin/M "),ª1
+#'«#ai2±main script24all9dtMries, to½òlocal machine. ReJ2hisD t˜ò , make it execuÅ‘and coy i,aa foldñ?ulongingf APATHÌ'abqLÌÁdone by copyf hNC!asõ `ğ;SC2ory=ÎMÑ Ipathnõ İ×+ uîr`chmod`–Ô .L³ Ö4!to›@>
+#'¦ ¼!y ’Wñfor Tcl. Alternatively1canw=dall itƒ m!3i‰Lf\ #asM¾Y0.tm`eB. Se_¡[tm manualçæòwww.tcl.tk/man/tcl8.6/TclCmd/tm.htm)]	fTsee'>gK2- [¼c JcoreÕ" ´/doc/trunk/_S/ëA.md)È 	Z1and?32w —w  §Õ- a universal-åC VRuff!B şóñapnadkarni/ruff) + J ‰Ç'!or½ 3TclBM‘Qy !Yóchanges'>CHANGES\¡ —S'19CSú “22 AddingHå sœA Ñfiles to HTMLCvL *7 v3AfixeÆ$ T8 Kité?
+¨ '28¨ ¡2 to fossi2?B õ2-06 Partial R-Roxygen/¦ ½Y 20-01-05™ Fr@ö< 52-0!Ã—
+& $26G)Ao›	 &0¸’ 0 W~"cs–edgw.cs;4 2Mak©sandalon”²bpkgDepA ]mk_tm£ 3^e 7 	ñfor \_\_DATE\_\_, jPKGNAM óVERSION\_\_ macros  in TclA1ase tpackageÍSğ¦ S9-01 Ô‡2 plugin  ¡11-09 arguLWQ--run¯ rzB_5V 	 #1 ğ&  N ƒ¿58 _V3 @s«z(2preF‘ted, emphn±strong/bold¤² w2-02-11ü16.00ÍQ- paráCyamlÄëÁ- workaroundH:> m4/Qtpack[°	ÓÑÄOblobÉŸ ¯L¡al help up1_gleanup+ ¡moved to GH	1 in" *9 @ W'.05 áremoving featug
+oçK1ify$‚code, so+ #edz[Fort,är placeh	qand sorª1facìt$RreducY A sizã3creİÁcllib compat(sÀ Caku èEV¿úS+ò 's infrastructub Qsplit³ ©!mm!©ŒCapps´‰ )EhookÊfR‘(benefit?Üp º ¡ing licensx
+2BSD†*Y-m-Y/ W11-17-8-Ã¦ â, sorry do notÎDS what®#do  ˜İ ƒIù4not"myAAthis´ K :$1D #--°'³ic--javaø& ,‘oder mult2filip ” 3ing}= ; Ç3forêøQ6u‹¦Ejs J£ *Š.~.rª :-Ts, by- [O 1  (I  v Sne onèh4Ä¥HÔ¹OshowÔ j F 2MakT‘to build /sÑKo (80kbş
+©todo'>TODOŸ	tdtplitef/ ?;  !2s'>_V7(s)C hThe **%**™ïwas written byL!}d
+¹/'>ÊV …	î ß!#« ,
+Ãü QCopyr‘\)3 .`‹\<Œ\>øTBSD LwAype:DñSun Microsystems, Inc.ßS<ñ ing terms applyg!llS£s a ssocia”Üñhe software unless»Qò icitly disclaim,“individuaR !. – ñThe authors hereby grant permis‘öto use, copy, modify, ;]†, and
+#'l6hisš {and its‡f§j]ÕZm]k]	sZn]5 NoÃ¤agreement,İ ,´¡royalty fe°$‘	4any&\!iz%3es.AbcŒBs toq0amay ben”Utheir«Ç&"ee‘follow thğ8M™'à,‘^Te newyr!ly4AndicÉo	 Qfirstœ of eachŸ! wVBthey¼.ëñ In no event shallµFs orF‘ors be li°!to™sparty f‘\r,– Trect,,â, incidental, ÚXcñtial damages ariE1outÄfŒ (uspM,°X ‘any deriv  Areofbeven iT à ™!‘been advi! £Ailit)Csuch§ :™:and)§specificalè2×_1ies– óø#"buÊ'Qlimitñ
+‘#„ implied`7’merchanta¦ M rfitness»¶ particular.a—¡on-infring:g\! is‹Z¡an "as is"t*sH tšZn=QobligO'qvide mac$Tance,ë,‘s, enhanc  2s, `1modTUtionsˆñRESTRICTED RIGHTS: Uu`mTosure¥)agovern¢
+ó asubjecÚ!thë"Atricn 3 as4Arth òbparagraph (c) (1) (ii) of2qe RightG+áTechnical Dataç	¤Computer S!ñClause as DFARS
+#' 252.227-70136 CFAR  19. 
+
+
+  /‘.vfs/lib/ Ÿ/pkgIndexn5 jS204   	 nO5603 jÿU8„µvsatisfies  4`ÂTcl] 8.6]} {[3}[R‘ifneeded A¾	R'O>’join $dir) o.tcl]]Ç1 ÿ'± ^< /12 O6120 ÿw ?5 9
+Co 1.5.3+ ÿk šZ0 D7462	 O6042 ÿU'# ì --
+#
+#	{"  5s a&q5for/4
+#	‰‘s that arA Bcess*±our various¦Äs.
+#	It alsor aroutin{îdT	{4nam«$p,  errors.ån ò1998-2000 by Ajuba Solul-
+#‚q01-2015. òndreas Kupries <a "_k ï@users.sf.net>M 3õby David N. Welton  <davidw@dedasys.com>
+#“¦ "T!e.ŸY" for}1#on¹%UoRion
+#ôÿ!ÛAôDISCLAIMER OF ALL¹nUIES.
+ù	
+ 7_-
+
+?;O: xq%ágetArgv0 getop bKnownO Sfiles ¸ions \
+	   '  V
+}
+
+#s #::T ö®  2wor9Ña fashion likNÿcrd
+#	CÏQ 1fun;q.  GiveEo î\Ñand a
+#	pointé5ò an array or args©ÂÚ,Jùğq#˜ÿf7 "edúA*"s:®svVar		NgdØ1rgv¨,ÃÃyou
+#			wantÅ“cess.  If)5fpéb			argE "is–i`5!th¿ s5 e­Afrom) "0b
+#	optK"	Ag ºk‚Ò pg MbacceptÇ H3+ı8“in ".arg"k#		ÚˆB ×(8nexˆË n•U˜ £.  Otherwi?  ™ x)rboolean~i|äto 1 if presen»1TheR›Pº5"y # Z qcontainë ¢3wasºq(withou34 "leè&1'-'^  R .argçÁsion).
+#	val‘ ÂUpon successÆŸ 1 k 	Ÿ BvaluÇ×(OeØ.1 £) Vcomes/22linE A.arg4 i"s,35€F Bis 1[ #IfQU failÃ RlVar *"le1 anY ZR messÖ6õ
+# Results:
+# 	TheR ªsÖ‘, 0 if no©-4
+# ¾ 4 wel°-"anàÿ occurred.
+
+procï {ö D)å }Œrupvar 1D"Va–AList—? eT
+ P a
+ Qset r' [¤ñAListO ÙR > TSif {$@ <[=ò  # Collapse unknown-2¢any-other-³K .› Ÿ !-1 v@® { H•M  Rÿ„a  NotesÒC„äJ™aØQm are6 Bleft¼G!is–ªÿÿ¦­É
+¯8
+#	±9®ª
+^ô was
+#	encountereÙA2 if8SotherÈàº åC× 
+æçÁ# default seY%˜cnormalOG 2set: 5 "" º ª" 0Gñ# check if we're pÂ2bhe endÔ¬l°ïK’sList] !=H2
+	#O q got --‡˜óÃdoesn't begi)#-,Ì Ñ (skipping
+	#Š W--). k	†½Gñ	 arg.
+	switch -glob -- [´EeAndex® D 0]]Êf“"--" {
+		. ! w[lrange3 b1 end]} t"--*" - *H x[‚L G 	H  \equal. D ¡0 0] "-"]}¦ ^ 4 Sarg 2© t	}
+
+		#Ğ8*S: [-]Ö=nÿ 5idx† 5"="Š 1· s$idx !=ÒI” e_val  B ö ª ®Itidx+1}]¥ Ğ < 80  @ E-1}]á HÙlsearch -exacı	C  ° 2# BtuN„o 1 wheniMZ1 I >	¡Kµ "¶ ;» ü
+~ ¾ 2„‰³exists _val_c $_val3 ¶ alengthl,: p\ $r ó” ""O]\"$\";A"o ¦$-2É ƒ[ ñUèN.+ ÷ƒ"Illegal! C \"-¡7\"". m 1œ@ Æ{’¢Skip ahead;2}
+	bh&ÕshP! a` Â¼- Ä, filling inWss
+#	for=6not&1.  JO2%,@¦1
+#	ÔlJòthe allowed flagsz¡ incorrect 7 ish çN2TheéDµß£ list, typ#BargvuWùW'Ø}i‚êRit.
+#µ "Inww words,ß<cå$o[?theK [dd¬Aonlyë$nom/s,K 4andš‘õƒoptlist	ÈB-of-”·%qeach el#}4xsí!m: "	(> }duakes no‡)$ 	 ’comment
+# 3(or1& < ¢	< 
+D "If.J1n t­pRtakenÏ„8			½.(=;@‚ppears i…·#7ult)" ot 
+X ¢ w ğ²secret", ità!no{;’displayedÛ3e uç		 Q		Tex¢aincludy' > 2. D
+W(B			"Á1s:"J1d
+#	Nam•¡pairs suitŞ’for usingc*/'seAl`ç`
+)	Q{Ö £/:}	v
+Ùbs [Getëî $á÷ÉS)c ˜!v]yUÒS!rr*o%v\½.R arg]Å¢if {$err <Ì
+v4(?)d ‚break
+	}\^a($opt)( ã}Î s(?)] ||‘—G Rhelp)  E©o[Y$ w] USAGEk G[ßg2]ÀñÌ|WIuignoresÊ.À(m5
+#	oZ ÙDBWm	ôQ
+#	isyLƒ/lyÁ	s$‡yÿ=6ÿ—	Oc…# As we ± them, keep@
+>
+D#ç}‹¡  Before w%ur{ÕOscedure,E £we'll prepçSsÇ
+44.!rg°"soÛ g¢2"loì&m.1Ç /s*%%KJ ¼#
+= ª L û!ov§6yğ
+†OjiP\ ÁFor now, addÍƒe4 ofM
+? 1lapƒ/Ó^ ^Cv [lÍDargvÄ& k(‡9) \ D&& !ÀRmatchD’ û4  Î !™Ä Ò 6}
+	ö	T== -2Æ	 	+ O  @ 0	9}í#yÙğ0YâŞù rback on6J Õp	j
+8ƒconcat $j lwä	‚Ræ	æ!inDliXBdure
+ 2ssei	ejá(that was passf2(or9#J Qdure)Ue~A§"Bgets$3dex®s • úÿ„of whichOZ' T's
+#	>_valueô	 Q2<¹ğyß1Var¸ R'Çcray inºeto putob'R‹Ğ%¼ {x · ê¡ × »œºr{? helpí4forÊp
+Ñìbopt 0]‚‘tC- {\NA$} $2 !{}ceQa	!Neˆ" h5 —ø$@#°Iëc … ?arg‚ ÅE# SeDsnV-3takŒ#s.1 s/ 
+1fUname)ƒ›Ä#V{ ü$NRfalse(S 0|4ú'I!--äGbGeTO˜£	‡
+6É(V(¿?	| #>Atº:4age}$9 -Ş{p5s:}à›nDr "[t)]£&\nš¡longest 20™w2s {‰;tª\Îó {{- "Forcibly stoposòssing"} {help "Print³«_"} {? }!©)"-£?0]"'¬UHiddey™continue”@	€
+A Ş
+$‚" value"&hIsc "Ã I2] < L1]>"Y< 11]"©  Ä
+CnameËc$n > $ì2} {èû÷ $n }
+	# max notl‰»W	,-3 EDmax(V V, )}]ÈÑÉa $desc_
+T{&rdesc} $1 3{
+	B»_+Btrim3@[)µ " %-*s %s"Ø ò n $]]å}"M$strPx,Sä+e	aof fil-h+Ñ…2, c:‚	!se; DvališQ²  On windowñe globbing is performed
+#	on ±â< RUnix,¦“  2enc}Qestedÿ*J
+#	aµ $Z8 no” a, a waÄ! i†¤ionally
+#	ÿD0BcodeŠu‘
+Ffull×N¶ Afile‰ ‘ not
+#	gi¯=tts [pwd]6×l•
+bis ensÂG½%Bthes% sÇ1evew>CflicQUÀ¡in our zipÿ å ²patterns	ThT   dT<Ñuser.
+#	quietñĞ:det, no@ :be 9:*!	R…s7„]q}ø”› ?	 ³{À § -	aÉôif {$::tcl_platform(	 c) == "›d"} {
+	ø_ # $	 £Š9pat	:$ 8˜["…rplain --. * œ + A== {ÃR 5! $Ø 	aÓputs stdout "¼A: noòsD$\"° ÿ…~	à I| c Œ	ù 	KÇN nx sğ	U} g ƒ{
+	# Mak˜¢an absolutÙRš/we2
+	#EË í	m2bâ~"ˆfullPathÍ£ü #]
+° !is $5 ]08ƒ ! ÍĞÏAfileÌ|_Õq ×TArgv0]´; ‹Ä"sanitized" Q!of|S0.  I?±strip
+#	off7 O/ı3andê0 f".bin"Q/’rour appI
+Qe bec'@Btheyİ‰‚be wrapp†ïa shell scriptÏ !NoLc
+fÍB» fŠU"us
+	/fB{XÂglobal argv0Y›		Btail…0šiZAroot ]³i#
+# ##      / NEğGaFs/×5bov"s.3 F j  b "
+#[ CÑ:E"  kƒIZproviÜ6N7Ttypedu? 8linN™†FS'ıV7¿6ÿ0 by Ross Palmer Mohn.Y6qô#
+# RCS: @(#) $Id:Xò.tcl,v 1.28 2011/02/23 17:41:52 a‰7x7o Exp $p6YGetop 0 j¡Ë#"ú‘::charcla€!--v# ³    Create tÓQallowáD ; F
+"à
+:is"½îj |:> S,ofc îsßo6"|"' sÄ3â ` QcheckĞlÿ abadKey ucatch {¶ Q . .}\ à [ Bdumm9 "A    Pí‡(.+)$} $… 6 U ˆ1allB ‘, (or )?}T 
+B ]{|}  B !unG” :8'	?8  ò1YT¬Â2p#,*5cg(B8ó In addition,
+#	you may1y aA forÖZ "to vçA!‰8 …8[Y 6s a5’…8 3 
+Z%ed¬ D Aremoêj¼5 Astar„É B	optá%	AÂ×¶’ iT –‹8Rxxx",˜%6 £xxx is any2Ö<A tcl0  @!n°Ébroutin/
+7 u¶H nex'sè5›5 ‹<OU­l	Ô72 ½ òes (e.g. integer, double, bû+,6 ñxdigit, etc.). Al
+‹tively, š2 Ó9‘for an un¥ùÍÅ81 ` (O:¯d9%6xxx
+)#i ¹ µ¤8nG!is}Qempty7 ¦å. SOMETIMES! DPn2for¤-…2!
+#—1 n 		Bspec<04 )If‘Ü ©j
+‚96 a›
+Ê`R ² syntax:
+#	ú.)*1fooş * àÌQÒ 2 f:` 6 .5. Aò1typşN1e auÏÛWÑ
+ÍÆ.
+#	Currentl!on»ôalnum, alpha, ascii, control,
+#	V Qnqfalse, çL,òlower, print,
+#	punïOòace, true, upper, wordchar, or °/f 2q*ƒaZ= ¡(bar|blat)á
+ë”quantifie¨Vñ#an™›‡\ Oarg?— † ì6 s terminˆQxby "--"J +J ‚ ³T *T ô  Ás work on altO  Ós, so, for
+#	WY¶!ÑaO”×3ica¶}a|blah)-niÅ miscellany:âs,bın» Clineâ*Áa unique,
+#	ø¯Henedoe£name. Giveqprogram Ê7	haóÃQ{bar.ã blah.arg blatšó},
+#	"foo -b fob" roö(# a$ õ 
+#	successfully3 ‘{bar fob}¯Ÿ5
+	Îuunction: Äß-ª{:
+#	 1	­eÓ
+#	 0	no moreé€$toó‚
+#	-1	inqña
+#	-2	ZV%ng®d( $3	  1 do;t_Atypeú ¨$A Bug~B4Whe.Y€ sZ"inJ%!al÷Ÿsz
+"usşi“the exactî ±. AbbreviatÙÊXcauseœ*¢ "b"::'®S”4")Odureê ´{ ?	
+P? ½IRupvar	h? hx retvar e r optargP #Ğ‚ setting¢8; -Mtvar l€8I˜/  ‡85P 86 •89 1   0%Z~5	É%	ª8,   h&
+k 2XJNÑCi
+^Vsionsv N"g !"st’R
+ë  ßÒ:strí 9&t £set _opt [n â9Ò'4 8i [Ğ° ˆ ^_opt]Š di/9  
+ -	!¥ /$i—  §^"nonei‚ [	T"±[^.]+([?+*]#op R ]o ± ¦ K¾opt 0 end-1	—¢ K L.M æ"¶9)  f=l 1¿ % n( 
+Y? kk§"\\.(arg|$«A)\$"Ş s 3 7|| Z ÿ {\.\(([^)]+)\)}P !	Ñ_k<7argºë
+l·type arg
+		*“ >"^(ç İ O		d ÒdBh* Î;!ypº/ofL · X4Qc ²}?opt?D,1*"‡;_ == 0ì  %||¹F"--"}/0]¾P 1ˆ €   «Oneof§ Qif {$	a== "ar]$s1sety
+İ" aØ/ 	Pq Qoneof': 	 Ú ,ÿ¡+ · S Eho == "?Ö V
+ğ	 ü ;«× +× ¢ 
+}O] < A Ol -2ËŸq “?‡?qt leasttq ç$ÇŠ!?optˆcl¡ 'ß 	„ ¾*ç¾E¥ )ç¤Æ¹4_Ø4 “¹*sBVif {(z_arg")G|| (9 ì; %&&—%"|¡)g0]|" "Q
+2|"]]  "  i!¦ /])Ç§Lò5©¦ Ó
++±
+/¢t	
+Ÿog –ŠÊğ  ÿL¯0 Ol -3G	‚IAõY.	T Íâ'‹†{[+*]} $a Éobreak;» 
+‰  NE'2\
+	f*kHm¿?:¯bİ
+Ô6es"J âBAD OPTION TYPB ´ ° 
+1¨ "--Ûr& c% >l -Ë
+« X+dEËIWIğ 
+ " $
+(İV’­%CJBThisØ.½-‹3bIŸŞPdI c is
+#	<¶[AThe )"«hIª"lH<€	¹ ×
+SH¢
+‚!ma»"ün *1ingW Î o JG! iU ô†0	:eying a“ Ô 2. Cš : Å œ ÎGTî"ñs "--", "-help",K%A"-?"‘$sautomatôJİdä iÜGÔ2Ü3andÜ Vi‡Ş#.”1ã‘5twoÉ%£al suffixe¨$^*Ya!ed[Os
+#	passÜa!to¬_ Aionsx!#	Y&aadd ".v"4$f /n9#eion. FÃs3v8uJ,Ê&1meaÁ\K%v® !usN$ôŸthan once`ü%"atï"ğ"#—%!enqo„ ,¤ç#©| q#84T6–If a non-æ	dM5 asC2, i¬nb	toggl<}aîSf¥’each time) ¶-é"`Q
+#	li.Ê ‹÷ÌÑ#±ÙñCffixŸ F notZ9tø3Z 
+b.
+#	InÜòcase, the behaviõRÊŠ:Athat0Qe lasv»™ÆæËreturnedrÈahat doº yJ #s,‹ BthemMYV nFxˆö2may)Bbe h@8Ê+!LS by
+#Í6 t#he—›L Ã\Ÿ!„Please nËZE > ª L+; s,
+#	aftãC—Jtypej İÌU ô"æ#Zq.secretÙô >5î„è:$ÆL‹`L
+…1´‡àL&>½é0l#Ag.§,04>[ õbRemove?Ó„9®
+¦à[	“
+‡ ½† J	I
+	| (.*y Itemp, Aset Ÿ †($temp) r
+Ò Aus $nameD té‘|\\(.+).?ñ`	!{}h	Ø§B?r ÊV Ôjust by beingÎVs, or no" ›.:flt^¿õddflt !'7@  H !s(,u) $dflt3
+f eÅO³4D:ÊOn ¹ ¼FpÄ¡.Ñ:sÑAˆF_ *&&£OC2opt¢O, ]Ter,ry6new*÷{arg == "hc0Ñ7 	w{9	|> 9 "$ N$argÛ¾ ;]  O K G €ºv-1) ||  3]GZ3Â|@Q^f i2 && !Òãv —í RÅ ‚ x |#2{opûD} [aŠGÄ]e Jif {[ğ
+†  L	€ Z ¢7—Ú’C#A,
+#	‹}+¿-1n (H4y),GA ô'd‡
+#al|
+°	À*™(ƒ1		AlŞ5¨y/°	Ú–CI {n ›CµµCRµ_    {•C&@ ³ U+"-	ªd		ªC.
+	a |
+ñ	ÂDisplay some¨¦Cabou”%plq
+
+f Â%nW$É6B] ||x #A$!
+	C$G%½~ -.+Ô' ÕHame ÿ#ŒD	²2?DÀ ¯”$ !	îD " <# >v ËN0Hi ‡ !1]ÕDö	SaccumRJD	‹¥‚#áğDRË%	€ ")}²Xäbesc} $Ñ êDA!éD	@)¿-°•©cfor a ÌA1; s! #es nŸ-QmatchiRnd if|æ3) õ/ z   5 eÖf ƒ
+#	(i.e,d "“a"In cglob $= !*"¸Aç:Ast		Ï !of¸2sóşCQ		wor</Ü G1û:Ècdex ofq1 Z¦uŞD †ğ â0M@Ùu£8Bn -1¤¦J ãI-™{Å º ]1# C0fd	º
+ºset pos [::P! $T @-]]® S $pos*	 	w Û	ë  Æd \ºq › Ô7 › *œ  b# Whatneã‚ nothing7f?• ¬ ùq ÑHq$pos + Ød2 ± !tra 'ir ! $L ø0› C}€ G$posµ,Ë I J-1
+}‹	ö
+ÇI9RQhelpe«RthrowW>qr proper -ÎG_ttach˜Ámessage		texH2the;  #Brow.m6s		€d partsÌmBs GZaôwith CMDLINE as basicC2add A=ô	”c:
+#	An© "is¡ n, alwayçBI{ï T argsÎ}¸ Ã -  [linsertd4s 0µ 3] $M /
+}\
+ |p	 „2õ 100644  1750    b70777  „¿4 16471   0||0 ßustar 00groth.    ¤#¼èñe MIT License (MIT)áCçŠò (c) 2014 Caius P±²% 1Per36½¨Œqed, freµtcharge,ÃÒperson obtain¬bcopy
+# &is=¼Qssocif9documentaÆIs(the "S2 !")g ddeal
+#µc K¡out restrin7,‹‰ Š‰d Athe NN4s
+#p!meİ zpublish€s½¤ôense, and/or sell
+#ò¢ & 2 toæt+qIwhom, á is
+# furnishe¤!doë9Ñˆ=8Á conditions:¿ÿGGîRnoticzŒŠ ã ƒshall be:!ed‡ey:Ö ñr substantial poru àÂ ‹ôgTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THEM ÿ
+IES OF MERCHANTABILITY,
+#jëò AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# ±‘òS OR COPYRIGHT HOLDERS BE LIABLEm ñNY CLAIM, DAMAGE6 qOTHER
+#) ¤ ñ WHETHER IN AN AC:"Æé¥RACT, TORT= ñWISE, ARISING FROM,
+# OUT OF OG RCONNEH AWITH)œ!OR !US  Ë DEALINGS INËT.
+#
+
+]ˆ¤*A Tcl#R9 Ë¡ó::tabify
+
+## \file
+# \brief F";s¾	aconver
+„markdownœ_.
+
+##8 "'#
+‡~6valÅ’{
+ ¦~‡  "##ı
+ " C£ !s 	¯written in±  7 f@param% ÷C ; c , Qtabs  RwhethÖ	2|2rve < B T¯ &is‹<iêj‘a fragmenÈPt$!£plete HTMLJ Ÿµ. The forma
+b "is7#’ic XHTML.;  Cprocp5t {#{¾ 0Ã6setÂÕall {\r\n?} $@ *\n¡Q!$tab¶		š9, <[::‰B::un“2U B4]
+	tD ·5‰TŒ ]&ìñ COLLECT REFERENCESB    Ü"$::ƒÂ::_referencel, * — [collect> =	’ fPROCES‡ Ò
+Ç[parse_block9 íº q# RegisG† languag@ÚRer. TÀ#erlND ¼ ±for fenced >| ‚transfor å{E ¡prettified fr© d{lang_r%UAer {X3ded{JÀ *($E 2) [šB $, 7ˆ!a àÅ£(attributeÍpairs) ofUsers andõ òthe number of occur,! aBby were"/in` 'Aget_Ü 1cou¬‚İO	§g{1 ï í7&heĞ ` 	ø˜ ?resš ’ 9” .¹’# \privat(ƒ/D_varñ¢?AE_var#í÷ set lines [spli	¬#o_* /8 JmV WQ
+## {æ ª8$: 4< $i Î _ FlineÏ€  : 0ñ¨<1\
+	Qñ
+ {^[ ]{0,3}\[((?:[^\]]|\[ ñ%*?\])+)\]:\s*(\S+)(?:\s+(([\"\']).*\4|\(.*\))\s*$)?}"+q $š j ó  ref link titlex× Û $ 	¤ ]>" 1=x Ò% /eq[n AnextĞN;+1]Q š!YZ-'?:/1/.0 $€ ] –	ÒHtrimS ƒ?.-1# Qincr ru A  šf¥Îtolower $refy ik/ ´ 3{<>q ` VU($refÀ7 ë
+k Xç " .£W - |	†¹ {parent {}	’/  •;'  Ó<^isult  rset ul_Á1Ô(?:\*(?!\s*\* B$)|- - c$)|\+)›loO T\d+\.¥v	ä• MARKDOWN™!Cƒswitch -$-ñ "va‚Àÿ !--ke¿ o{^\s*$µ·# EMPTY LIN=
+ cif {![} M ![l“u ÙO-1]]h aSppendp#f "\n\n´ Ã# 1 /\[@??\S+?Ö o# SKIP ”Æë ÅaŒ  k 6 Ÿ	S-[ ]* r- ]*$} øV ÎS_[ ]* _/ e\*[ ]* "\*3 O  ÿ# HORIZONTAL RULí”"<hr />ÉJ	Y#{1,6’ ÿ# ATX STYLE HEADERS<´2#+}­% m¯ µset h_levelùelength ¼moB b\
+			[y%inr		s 
+m¤^\s*#+\s*|	 $®	$		­	/{}u Œ$Å $>$Œ &</ ¦:/\>I¯BLOCK QUOTEdset bq/f Q uëS    l9ƒ •kd\>[ ]?7/{}g
+›Ïf {[is_empty­
+ 8eoq˜ Qfor {r3eek‹} {$peekšOpeek® ı	ºOpeek -
+
+q
+ B »>‰I Nç, 	“ _breakY L C beoq} {o §	 K Í¼8 ¸ 
+®	Ív[join $I/\n­#<–‚quote>\n÷7 $] A\n</ 4 ˆÀ ¿{^\s{4,}\S+Æ# CODE BLOCK» 1setF±n… ı [html_escape [\ ‘regsub {^s?{}]6 îwset eoc¥  AÏœV˜%> ”P5ŒÄ ğ
+D 1xcxf ^"	ØS /\nÈHº<pre><code>@ !</ O</pr5ñ(?:(?:`{3,})|(?:~
+ ò)(\{?\S+\}?)?\s*.Z[# orig:> 1\{?°A?\}?–¹
+# FENCED—!+ŸS 0] eq {`kD#ndi!{^½ ! 
+ É0ˆ  P YP v# & Aôu}i"fd/ ·immediatelyË†Nh!deª Ders.2  ± T```tcŠ„ Tz† 8:õfor two purposes:T Áa) As a CSS †F a5Aö   (useful e.g. for,²E.js)I bI 1nam(‘ a source¨Æ2: Á   When such†Dq)~8ed,0 "thW z:!seYrRroughõL M-
+'FjolowerSn31]]‡ ›ƒn#ne4-‹1BCCS_Y"a)='(E ¹]'"
+			incr'& S” ë€ %‹EİFmÅüI(ç$¤ÁCb 3»+³æğÚOine]} «Õ	Ë
+a xö7# I+ab=ç²Uit on8 	%Aesulq!|snippet*ñ5–`“Ï			lassign $7  cd$
+Ïmv&5f {’5} {G«cmd [lrang:È0é2] }¥ 
+b Ò
+z å
+"up–t#0 $cmd} wû
+7‹C"<pr‡U’='code'>"tQ¨ ^>  G j äº†|-|\+) |úRo# LISTµOlistµ±# continue \¿Aame ƒ2typÙ ª.:†jQ— ‘6l È#stEd 1 N w uw dw Â	m #as¹?AAA' #‘ë/!	BnS Ñ²  ‡set item`  + 7n_pq> Îs/ 1/¤Éjì Dincrf Ğ~ 
+ØìG , ‡}"­R\\s*"A [‰#d¶crecurs”¦ n›g õ{\A(\d+)\.(\s+)} _\1\\.\2Û  Ì M s*|\+|-)O Í A\\\1L ÿ<= x
+P?2no + 1}]ı-á lV ‘ ]ş> §Oin_pM”È>s	Ëk Ç_$in_pŸ	 / ş ì 94ğ “Z
+ë ™V Is3P¬z°/Ç ñÊ4  I‰p ‰U  <>
+Zˆ¹	rv /liĞ ’\±²-lineanchor=
+Å{(\A.*?)((?:õ	
+	f).*\Z)$+  +\ Ï	Q para°1#]
+  %!inU_$para hT	m$re©8 Ø	 ° ƒ · ÇÂÓ¯
+X"<li>x O</li)—|?peecƒ gy ˆ47typZY¥ 2\n]1)</1 \¬_ñ{^<(?:p|div|h[1-6]|"œQ|pre|y—¢|dl|ol|ul|Z{3|no	 ıform|fieldset|iframe|math|ins|delòD #•,³ E_tagn¤®6¦(Vm%ô_htmltag {<(/?)(\wc)ÿ\w+(?:=\"[^\"]+\"|'[^']+')?)*\s*>¡ 
+*ß% & ~uffer {nƒ* Z ü ? \nO3ncr;® j)1ags‡
+Sexp -Bg-all $m$¡ 9
+“set stackëF0
+ÑO{ó¿name} $tags¶$YBeq $
+?tag6‹o Ù*
+ JÛ +' a -a ùô ¾$è =Ì=ÓQ /Ï… Á# Skip empty"s ¶O<QBlock*/ Š"K && ıˆ ŸÎ Í m6 ô!E å Ú@ Ge®* ¸q{(?:^\sÎ.¯|[^\\]+)\|MÏ# SIMPLE TAB‚&¹Ÿell_align,Ì%ow,« Q&## ‰>óa space between || to handledFcellj4 ¤ l}µkn*	+{Ç)•|]|\\\|)+ 
+ŠPŠ{\|(?=\|
+şÃ&¯line] {| }ª!«@©{E  "epÎ è) s# checkÅpdhave a_oor row‚ 
+ô/©q0,3}\|?ä*c*:?-+: Ô$|\s*\|))+} $µ W	æ l	Éµ	’€ ı Û—cell_dataÁ û S-$K @ ¯    {:-*:}1 Kq ¾OcentH  ` ?{:-ò# È  Oleftt
+  /-+>1OrighŸ ALJß/É
+ =& À º
+  J 
+!"<îv!\" ?\">æ/ F Ohead6 Q  <tr5 ¬
+2İ´}ætset numÛ-9È†	 Æh  ˆ/lsf Ô! {'q 0} {$i6	Õ *+igAset û 4ZO$i]]_œ	`	ñ"    <th style=\"text-p 1: $ /\"N zƒ f z\ 8&/ - f XS $i]]Æ$ </th> "xİW bĞ  ÚÅ/</Î¢¹ò 	1© Qtbody'¿  {ÿÃd{od{ d{a²ë:¨e[A f/!ó|e$µ  1$ †1"</¦	  5œ/ ? Ê 4LÁ'& 
+   =û# PARAGRAPHS AND SETEXT8
+v  X"Ztype a ! ™'Š6(U#9
+ıA_) && \0‚²	-e%zƒN&/=+õ< ş h©@  Ù Ÿ -Ÿ 2) Ÿ 7	y	°	^@oeq {lie/
+ n ÷ À0	»ş = ; =o ]*_[_O= ; &=2=/\*? µ< áİWX ô { Fj\ãO ¾¼'_ e ä  $	 j4B /n]äó
+x(
+z·<!--.*?-->}R /{}ô;2# D<kñmake a new paragraphÿ15juspsÙÓ ²r\$">W $</ J
+  ÙæE„eº  ×EéX{text™x&exª$ „#Á{[ ]{2,}$} $PW<br/>‚+Gndexi±+ _‹å–s   {\A`+è " Rwhite5M {\s  Ï AlinkB ó!?\[([^\]]*)\]\(\s*J„s\)]+|\( ñ	\))+)?(\s+([\"'])(.*)?\4§6-\)i 2reff « \j 1(?:m 1|\[ jJo(?:\s*ŒJm*)\])?c F!.ò\A</?\w+\s*>|\A<J!S!G=(?:S!ı\'[^\']+\'))*\s*/?>\ DautoÀ ş{\A<(?:(\S+@\S+)|(\S+://\S+)); ›rú ¸s‹#’re_entity “{\A\&\S+;“![ç‚Ó45UÕâ	O$chrÁ ?"\\±Š¿    # ESCAP^A¸J– í18…]O ñ{\`*_\{\}[]()#+-.!>|}•]³ˆ6chrJ n  #   /{_GE*" HOHASID†
+ÆXô‹end]] &&Á ÆN —B4+1]¥$Å dOOhing| ûĞ T-starf &	|ÑA(\\$chr{1,3} (2\[^ A\\\\Š\ c)*)\\1033	  » ‹(²m del sub]
+Ä 	ZlOdel]%  Ü:em>4Ÿ$sub]</em}v 2« ´"<strong  o “ 3“ '&	œ .R 2m)
+5   Ï4 6/{` +BC E¯P $m? W ‹ß0	/m]ŒFØß³-indices $mœmˆ738ßm from to
+			¤ 5subQ£ _)¸z ‡$from-1]Y	 “¬?
+Ü9” ±	C"to2Î ú6!  /{!j[ABLINKÄIš\{ @1chr¡?!<
+Z
+fÄ/imø		F ?linæ«LZBtch_ygm%Ÿ8û
+(Á txt url ignAQtitle¸C # INLINEU×$R
+7 "seŠ 	–ö$url {<>V%l  –x/ó _ $txt4 TT	+VS´ 
+–1* $-˜?lblŠ
+Â1lblÂÁ
+V;lblTA\s+}? { Å–	X Î
+n@O$lbl;ª†=_íTOlbl)
+E    cc@G ëã¦Ô Œ0K 8 ”!¤
+1RD“ ¬&  ‘û‚ Rÿ# PRINT IMG, A TAG> ûzEf {$¿+/nk0c ,e"gò a href=\"$url\"Ñ2=\"Y¯\">$txt</aX€ o sË‰ 91vimg src:1alt8/xtG /@E‡ 
+v G~.	/<Ñ3ÒTAGS, COMMENT&	AAUTO4	² ª{ì¹©
+
+Ÿ$¦³—"<»Ì óÍ ¿ email linkØ 
+ò,&kë$g ‚ 
+@_qlink\">D P§
+}ò mailto_prefix " /:"¡ 
+	9AB"^${6 E ‚}(.*)" $V c^
+ #: Adoesƒbcontai k¨ È ÂEiltoŞ › ä ¡ £k 2\">e ¦gdj±
+
+ç\[@ÑQN$chråà/{&SoENTITIc±#
+$üRâ>Ó' ?"\"£O[lÿSPECIAL CHARACTERd*å
+ Ç
+û„½àA µ~
+YX{line¨N €¥_f ö{ ÒaùTú[ òómap {& &amp; < &lt; > &gt; \" &quot;y %}
+\mOP Ajr 1.2.3
+d 
+ t1pkgÒxğ2 tD214 İ
+ t?333 tÿUS£oµvsatisfies  ABTcl]¸o ô
+
+h! [ƒKÙQó¹Ä?&di%iôÿi
+ q/tabifyş2 C3172 5 16151 ÿUa#
+# As‰mauthor oR‚ procs '	…2' and 'q²' I suggest¥1theÑv³mments explÙwòtheir behaviour be kept˜w"isşÃá
+# 1) Beginner¨r4anyÈ¯FmingMpñ(I am new to Tcl so I?Ø‘ what I
+#œñm talking about)cpòprofit enormously3ñstudying 'correct'ÄQ.K –Of courseá CV–help a loÎ ãregard.
+# 2) MÄ òblems newbies face can be solvŸ|QdirecXS"ÓRwards€ Qavail!¼³libraries -÷?Gall, q<Ebeenjt"tof K •recurring˜ Q. Theåy– jV¯Rm, orT Òa closer lookL ato seeòto discover how things are donlñ'Tcl way'.
+# 3) And if ever apŒaÏ ñ y should be lesó‘án perfect, hav*–0xvÖBcodeÿWÒsurely help.
+{¢is said, I# ñwelcome any error repo¤~rşŠvaimprov¨ßñs
+# (especially o^t 'doing!thS‚ aspect)‰ !Us1{Sthese:Ss is EzSd undğAEOÑy! a) 2TclJ ñJune 2001, Helmut Giese (hgiese@ratiosoft.com)- 8Q ”The origi¦ÒUTb' eachÃ´Ò^vbblocks|ò$num spaces ('num' holdYåv‘ size). WñB1thi¢certainly Zö
+# in some circumstances, itareflecŞ! w…Ïq editor§ ¡s:
+# 	Coun¸rcolumnsÅq1, assuºa— Q of 814>qa12345'Èbfollow5 ‘, you exp… Ão advance ton „ 9. Your— F\L 2putD utÀÈCor 3Aq, depen=áon its configuÄn.
+#	Now, on	Aing'”  ™ •see those] WXd¹ ´
+#	tab (andQotherlBâ Â2*at¹ùposition* to be
+#	V É )ïsÊi’is mimickQ1the5ÙóBBothøñone feature in common: They accept multi™)ß÷s (a who¸z â2 if8a1µA) bu5!orÌño make life simpler<+!thrgrammerƒşÅCtüÉ1comòVtØw‘individua_e"vk1ach8F1 to){—ešArealäZ¢   One desÈ!ciÆSñworth mentioning here:/ ²   A singlemQ is në	Â¢qeven if‚ód wouldM AalloğRdo so¤S_ ñs occur very often, say in arithmetic expreÇ~as like^ j!ó(($a + $b) * $c) < $d]. If we didn't §×above rule wew"neñbreplac?¤or more ofÜ¡ tabs. Howi &2getú‚changed,¿ $ ba{ó ted quite diffe¼r- which$€ ñCably½{”good ideaãŞ	åµ¥å á Â±aòW¤2: IÛ ‡xtŞ~Rs it,·	±else to do?A "AsÜ_Qsequeõ`1two,]µunsymmetricQ
+M,bIK AcoulÁñthink of a better 2ËˆœClAyou?¸8O-
+#
+SÈs RequirOÍ6ö
+]8.5 9 Âœ::repeat
+Ì~&::# İ36Ÿ AAPI §Ÿmentationi ‘
+    nameé import -forceš ½ b::strRÈ }øŠÀ È •{ num 8 }v\ï	Sšò[MakeTabStr $num] \t] ${]v 
+/x "\{  x ² é —ÜšĞ m 2Len¿bif { $ 1 !=ù ó  } then {
+	set  E$num 1StrB’A " ": up i$ƒ /}
+K?"# ¸åLine: Works on~İ!of=1,‰Qing 'uSs at åT
+# 		“"s'Æ›d$num iAquestÂab size.
+#		²}# ñ(possibly modified)ˆ \z 	‚s': Only&s²Q'fillh: õ	' between
+# an arbitraryF S
+á"xt¦ 1topÏ#beóed. 
+# Example: Wí Ñ 4 8,‚ a¦’s 11 - 13ï	X*not*Q  Îan expan#k8tabV 2 11P òjump up to 16.
+# See-Ÿ%thk 
+1e b2ingG9C whyvÀ are
+# *m*ü S’TX	cÉ¢backwards,¾rthe endk eW« 	 ‚:
+#	- Se‹	K3 to
++> RearchY ñ('lastPos') to 'end'.D #FiÃÎ ÎArencÊÃ' ' in 'line¦r`tE S #
+#‹ò  ('currPos' below).àiUqandidat>"BmentX	D     &o I C¢ne!us 'he_	Š tnextTabm	$ ! +B7) - % ]E Tand gevrevious‚ ‘as well («bsAstarœL Upoint]12iteò)Œ§The ' ' atÿ is only@	¢ if
+#	  1)­£L'onŸŸúÚQ*and*7 '2)—e³1 at!‡left (se"Œ
+œ‰I b   touc²an isolated"ä 3  C2cA, ifâ
+sP!is-
+2met±Determine w© àz(E1is:5man×!?)£ by steppXÁ until
+#		--83hit1¥=“ 4are'	aD»Qement6Ö"Âis algorithmñ#'İ%	 !ÍáOtherwise our `bterpre 	v
+n³Cbeyoó2tabñbe wrong. (Imagineı ”
+# find a–Ù R 4 inW?«1you8Áa3 lead˜1absF¦r *real*
+#6Òube 25 (±of 8). Sincó!reF"fe/gsô¹ 
+# already‚, we tesi"itùôeventually call B	ALineÄã	±Line { lineã	úÑÍ,ğ5"\tÙ5¡ } { 		
+	#˜#re`‡!'SLßset up 'Nò il faut'
+	checkAr!
+3
+	#ÎZ+e&	š [Ø † Ó	)	¦$B end>	¥U# $ÓA > 0Ä
+”	5é *†	w 5 1]
+	e=
+^JB# no‘Ks ¢break;
+	}
+Ê 
+²%{(N +Ì ³"}]< Fprevî{/‚QTab -; a}]
+
+	#İÛ1are!†around:GËgIat 'Ï/B- 1'f $T${$v 1- 1c ¸ "1)í
+ ò 			;# crit. (1)F rì/ow –w n?" "] 2] Q# now	ƒ
+a¦Cdõ ~ 2Dddos >= 2} {3fAos -rKÖ J$posÅ 	¢*Q# ...?OÙ—2f&]3púE1}] V\@0ÿ!«!Òline
+}
+
+#
+# H©–"Xfor 'f‚': CheckU¯!ll§Bed e¢s~frray
+#ó/Æ bcreateË1misÒ1oneN Bneedï–
+| "‘2LenÿCAvariÌzùt>™2Döc set i>	{º24ÚQ$i <=^ 	#A mo A($i)ÅiÉŒdø2K “M")
+#¬vBtabsY¢enough
+#		x2 toÕ	o>
+¶eÓ1edu“Q straUsforward:hp ÚCalculaty +ûUing i	#le/ 1tabG™insert asü$asñ OhereQÜñE$ñ?K2{ 1! Ó
+.‘E8tabC!thow farDR? 6dis18?numX#L1'\t›<awith $I ZZ ¦‰; 	 Rdist)¢
+¡U (notkßñly necessary but maybß‚rifle
+	#jÁefficient)
+	¸· i„93turÓ	ú³ tabify2: RSòall 'appropriate'Øi“discussedÒB
+#	''»	Ahold“
+Qnumbe#.a", Xş
+ıùh ?.
+#3× =#ç¸ ÉÚ) bnLst [2 Ávgj]&on> 1out? $liĞe§ZG$^ C{
+	l„(1 È 2Linc.ê	 #Õ…all as o(~  s[join $W !\n|xWGthe Îú~Üü¨E    ‰¹` *Î Lü-ã
+ÿ Data structuresxyä1  8  eStr  [uã/ l8½!ex½ ¯ õj ¤½	q2' usesd” s="cyv0#œa8can”1 byb­'Ö%àƒis handy– qto have„ J'a~&s'‡#Mƒthe use ®Ê#D Errayg
+,,w
+D(n)':!$'n à 5The" '²2' rememberx #bi€%¹Cused\±= É2H ğ° $
+r {0 ""})##      ¶Eady
+•qprovideŠcutil::.O0.8
+1Ÿ¤ ¼ *ruO.tclğ 0 ¢Q4355 ® */35 *ÿV ëÁ --
+#
+#	EmulÔ4 ofü& ô for older
+#	revisÓŸt&3¢"00âÔby Ajuba Solu/¼. û1-2006 by Andreas Kupries <âår@users.!'Ãforge.net>
+#I¯Sile "9'q.terms"Ä cinformå bn usagÉ(‘redistrib¤ "
+#!isK ,æñfor a DISCLAIMERŠ $LLš AIES.… ÈæBñ.tcl,v 1.1 2006/04/21 04:42:2&Ææ	ƒ} ‡=  	? {}~ S 
+Š´HaveBuiltiná’![catch {{£q a 1}]}Tif {0ş4# Pd+ğáhe deactivatedÊ+:u ‘# - LineaıÙçsb- TestqÁx a' in eZ$Scall!J b  (Ok,Ât°’, still a 9 )9 c- Failj •num == 0'@óof undefined 'str'Ô~K¡5::SÌe{ char	ícÑ$ € ÿnv0Smb ÄiV	’str $charC 5}
+	;t›set str [T4 5 ˆ/A$str3ŠXif {$| Ê *, Ú
+{+©r [ Í ™ 	º^ blank {nS ®nO  W 
+µ qnum <= fA# No+"icß4$d–ê $""F A== 1º ñ    # Quick exit1erecursøöG »J 2J "AnE&qR W a0 == ( G% 2)] CHalv5/á&òlem results in O (log n) complexity.ã 0HHsultò{ ˆq b/ 2}]]4 ÷ "D8 LQö# Uneven length, reduc¡ £S Gchar{‰ irnum -1]¾÷‡ŠRÕ†ƒJLä>Ü=Œ  s sÿ  :R?164 /42 ÿV :%€±# FRINK: noy $%
+}"ifC S0.10 ‹)csource}Û5dir6 o.tcl]]V A::adp#  0.7.4V , T O   0.9 ª , S mMS 8S OtrimR _abifyR , T 7¦ , T ¢0M, T ïexpander 1.3.2õ, V p€R2¤, S ßwcswidth 35.3J, V „0 
+ ?yamü< 
+$57ÿ @o3 1546 @ÿV
+%ç.}
+‘Ayamlİä4–Cyamlé+°3bhuddleK O 0.5Œ0 N o::jsonÚYjson2S Ñ ¸  ñ è 4 C2706
+ ?222 ÿWïa (workNBitle< ñ0.1.5 2011-08-23 14:46:47 KATO Kanryu(k 6ŸT $ÿ$is/·"ed!$Athe ¤uñ cllib's BSD-styÙ1Rcense¦.	ãUnamed  D „!Th9=AbrarN@Qfunct¹·>17Sinatewa/list/Š¯#inà9CrankV ¶h8-2011/ <
+>ü ñ15 Miguel MartÃ­nez LÃ³pez <aĞ1cioê æida@gmail.com>ƒë6 û ÎO 0.58  « qwrap un 2isH ‘strip_nod²(a_equal ñs \
+	argument_to ‚ get_srcû&—4typ'£# Some subòš<Blict+STcl b5# A. Sox,Rmake
+ÆI2DnvenĞ¯0(,l8"inµô1cas“*@ aprivat@‚cs (e.g.É1ò "set" to "Set")Ë ßónsemble create -map5'
+  Q::Set~ ñJ  ( eAppend+ gT 	GT ~atrippeZ R  X :unsZ 0 7UnsX dcombin­ +  V  l_relaxˆ  5 ?typ_ 2typóD%?mov)  R ª6  ²  ) Axist)­ *  + ?clo'lo?S R  T o' 
++ Ewrap' ˜$  T  + OaddTO - ujsondumZ V  + Ucompi³	 .  - Öğ/\x t {typeN(:×*\- & [itail $G v1 wCommand} UType_3 Ò[upvarR _ó	 6 Qif {[>c,4s $  T map]Ğ 
+-_map_of_ç@ ;get= <: !re_)9 values $\ 		}Q 
+'xÛ º ì $Ç$:: 'b'wpath_toÆ c [infovG +*]L ^ Ë$ª$> Oni $U ²Q ½  Ì	ÖÅ<evaÅ% "5 ( H=Ë/ ûë` Ã9 Í Ô 	Ş
+© wunknownˆ  -â~¹-“VQI$lscñ·f‡, {Ùc# nY+\Ï Á"ØI­	H_map’êhE8#š`Ë‡ ğ6¶$IxcMethod, 	¬e“ „ß
+[ ,t6¢àOsupe”òp&s(% †:$tag) $ I : Dtype4 Ó'  ˆcallback+ ..  ´isContainer1  1  btagOfT‹ r), ¹ •ì& $‘B ^s@  V::is_*ä_of {tag1 tag2À¸EÛI§ ‡(list_ofT !es-1)›2 ?¸F® 1tag$1•0Dtrue¿  9² P :4J_tag²  j “4F 
+€ 
+B Æ —   l!BÓ 	Œ ¥ •5
++  ‘‘if {$tag2*: “’! 1Z ‹  j2Î	Ë {7CmdßT argsz |Y	[Ñ2  p/-á™ÿÔ·,	
+e	 f ÖÌ	¬ -®	¦ F `@ †
+… - ‘ h
+ˆ $ $eÇ"KØÙerror "Invali¦'Œ '"«
+'p 'V ÈHT {objîÄòlindex $obj 0] ne "HUDDLE" || [lH!  8øÏ ˆA    ±Ç¦	r 1åp&ag * 0 R ¦7b[arrayº6eypes "Ÿ„"] == ""Ü   H :1$ ‡	E{nod"Í  	£{head src}³ ]P± Jhead@,ç* Õ Ù [1 }X Ibp $srcACåIa A$src) 
+ / šÕôhead '$head' doesn'.ƒw>”{tag cmd Å
+{f Ÿ ç Ã…cmd {*}$K Ÿ(×Ğ( {çl ò Ó!9$arú	dCA$obj3 S2setÑv_objectÆE Æã•_of_group& [#$D 3] 0r˜ VF ©Ÿ  R(àQ}­' ƒ£ !neAÛ	$ª@ 	ÿ $yV	y WO$tagy Æƒunmatche#Ñ are given orÂ2\ikBaÑƒhe otherì   
+ n¥'5{*}‡X?src ñ )¾ô _subnodes "" {}NvJ1wrayv"ag$7ğ{Ş	% 	;$\{v'&\}b= QĞäÈÑ{src {default%
+søj š 9src 2—õ* 1m 5 J ga{ node¨+´L b4› {Ì2L  ¼?¡/ 1R S •	[ ]\ ;Get%	U
+F’retrieve_T \ .†½ 7j 5'¤ m !paUArippÅ¬7	Ü ‹yòBrgetƒS[Find é
+]:—t R P $h úÔ¤0  Ï 
+OA%arÓû ‡	~+		Otag)è  ˜ 
+T pathï3.vËğœ 1sub0$ ¼¸ ' 
+` )Ïƒ 1srcK Cpathş’ g û  Åå@t ë¡ 32keyç[/)f	C.
+/&&H)_>Ekey]g èˆ2key„UOÀ=& ±ş´©©
+d1 obj2¤	t2obj= <_ [ëqVobj1]À_obj2]¦A E1£ Gı[Csrc1N1% c2 src2% 2% 4ag1º
+2.%" 0„	ø ;btag1) [Q$src1P2é ş9varìà £Î19rvar objõ™ş í ^]ò ›$
+
+õ	f¡sset obj¡) ]$ 7û ?Set¹û #sear[lrange¤ ƒ 0 end-1ñ%ewõ[
+D~Gend]; 4roo†{3obj! f# We d\F±internal re¨"c"6*Eto $L ´á# Now refcountfú! 3 isÊÒSApply€.
+¤ ~Ó ' $ { 
+Á˜ ¼…®	¹Z tmodifie²A _® 
+–® © ì£ 	T § f HO len‘8$¨ ­!kezĞ dQUEpath†¢if {$len >ª5± ÛuNE ¯¡| ù| S1 end› Aincr-ÖZ Crc " Oitemúb) itemá B D{keyó1} $Q ]*  1dkey eqÚq½ ±{E¯¸"$  2$leçz& A Í )øKR$™¶o # m 2set "@ k [ClonÄ £ +
+a ¡ 	 µ ì	œ ê é²src\} don'tàC‘any childéô 	“ÎñT
+æ Ë  } V%ÙË8kM§ À¿4 »ƒDÛú÷	Cí¶EwrapÓo C)u Ü(Ç6‘ Ã6h~Ñ¸	Ö uh  2q> mW"á ¶K õÏ$¸Ç/4 2.âS 	{x!rnode_va/ _
+Es ""	œO Ç61
+B$src *Ö .× x# In th‚]]TÒZnO¬ 56 gAway,n	U
+6srcO
+lUode 1ö• "geA’fist key.S |Cƒis used fzf>ñve case ($len>1)wC# 8bas B==1)± !see <	´%û÷«j n Æ 	G _%asrc toŒ , SÛ « –q_but_noc	2keyº 9	WZÜ	
+I	 	&[
+` sadd aga/1new: rjTcoriginc	Xè 1Œ%z ‚Cthe ªÙÜ?$/ß‘>à1!$ L]} {Q	0ú#."1E	áMÔG  2	 …,ÿ{offset "  "} {newline "\n"} {beginœÛ‘extoff "$2 $U d  clof "$^ $/   Rsp "  fæN R ""]}Ü§!sp}M˜¶Rype [Ó ©Š’switch --
+¼‘boolean -S 4   #R{ 6/İ(j Aget_Õ;pedR‚d
+	nulløBC unull
+	}^ ñ 
+o …set dataÛ q 
+L ò    # JSON permits¥_1oneÜl 	/ j   Œ1 i\n \\n>  V\t \\™1 o\r \\r6 _b \\b _f \\f o\ \\\\ R" \\\O ]/ \\/6 y} $data ĞD!\"# &\"X ¿Œ½vinner {( l&leFÎÀDA\úiÇFiHblen} {ÈZN ”"ubP Dk / $½ ÷Ã [?$R ævYØ]H
+ş ßó ^ ]XG¾ p5"\[-2 V 0]\]ˆô  f’"\[$nlof[+A< , ]²O K ’&
+— +U× }nKkeyso]x nösubst {"$key":$sp€|X M].à –}˜=$	U ‡{t‡}Ö‡> CL#:åID# Ÿ ùó	_ a
+» ,#Âóis plain old tcl}2!
+#øéD is ÏL#asBh;ußM5} -H Asimpdg«1, "‹½B" it!rƒ's not aµZˆ
+# {listD a„ ¶!ofˆ&Bngs,8Rrt to?Ç'sA  F Flist, ?dicr 2dic, ' x™ ) ? xx„ 1 Qwhere‰]ª of key xxò N *M 	Ñ _etc..±&¡pile {spec„wVwæ:speÚ"´Ö)E 0¡¼6pecp" kÒ2   'ë
+¿!„  ™~ **è ‹	 ;L@Ñ2ä  ª2key) ''&Cing_îRspec}Ñ ; ÿ ÆNB ! $ I I$keyˆ$ [â c$key [º7ÿ0$ˆñ  ¥. I   ¤¼
+M	 
+> 	 #C+Ë°	_ ºÃ = Z* 
+Å -z	²GNlist¡’2ü	U
+Bpec qÃNitemg 
+³ ²	6 b§  K ªsó
+8 “ 	Y JY  M²is double -7øb  •  #nuk— (‚3Badö:} O â U ç 	  ­?oolî 
+Ó Ÿbool trueÓ  L Ë7M 	Â ç 	 ‹æ  Ù ; eq/ “  Onull Õ	­Data mus_maƒ: '$data+1 Ú Ásê t*¡‰ 	Fy â  +K‰2—! '¤&'"*
+ ‘
+ô apply {{selfdirÊZN " Ü*“types.tclk%n8
+``>H(reº:D F?‘Î>mUt%
+}ó } [file dirname “normalize=£script]]]
+A   &òmkdoc.vfs/lib/yaml/__Ï ^2 ^1202èQ
+ ^¿3 16436   0Ö & ßustar 00groth8    ¤H65valˆÎ'% qxport *Å  #va­šïº7›5	Âb# type$îX N9 U  paÿş<sEVkeys}o  _tag D w6 ye” L²set Set} }
+j>Õ~º{src key} {x ñ# get a sub-nodeï$á by "key" fromÿÚtagged-conten	Õ8iŸ	-€èc Õ4+ D{src] 323srcF {Fd\ ‰"	½ Aõ% H#H#aNë Q(1srcâ¿
+‰”!* ÙH !::Âî>¡ ´  ƒ  nƒƒm 2fors}}  ‰?Ğ$<´ ƒ7 #ô!7 {hJX 	J$ à(un‹A „ …ç 
+×©  	°” 6 ""v˜ 7 2  #*)CAfor 4	[» J,{J,¯,
+½â-1rc1_;	 S2]} {« À, ó1k1lÊªq…ì/Q$src2İ1g Ù,![Ş-¤1õS T VÈ¬.
+ç
+07Ós?Ù
+_¤list] % 2}Û
+{íy! #+:ïŒ"„	V7 &?…z ...?"}Å Lº 	XD }’ Cl|-/ne0
+ÃLÅ
+- êÃ9Ô ”# a O 	Û 
+° ¼ì?3{*}8L– O` #A,d: all ÈNs{¦T { 
+ó; 
+©,] ş ò 	'Ä.
+9'nZ	)*5[CP‘L0 ½ŒZ"@1"Thè	r '$key'p<¤ literal oVâ"Å A$M$srcW…‹
+xn‚Å%D £: 6 ¤oŒ
+:5í	0 B[getf'pŸo ¿Ó
+ Î ë&+ Í    R¥Raƒ SL¦ S) Tt 2Lis`%Se " LC}9	«Öø	Á
+ ˆ¦Arc $* ÿ˜
+!“
+ç	i]ñ
+
+©
+iÀ ¯#—Wm
+Ø HB<ó!ê		R«	MıhıBmY[•vcompare  tpresentß›A6] >‡!Ì	)Ñü
+ô
+N Ü À+§˜ ># Manual%tlsˆ§'dat end@x* ®Í =Gv	û9U	{¡	™ = y F D 	V X 	 Vo] ëçâ$[l)€$« U o
+
+• ‹T © B[N2""]@  A 7rLm ­	RTD%TY1 $i]c_2 $i]ÌFN< /Œ	È 6 1 .  ]~. =_	q=J² 	ê S  
+ `÷L< &  gv¬H Uxú¡ 7ğœ-à Ò .L.C	0,5f ú	/ « S0Cexpr³8a>=0 &&1)	q w ª>3@a… ¥  ¾  8/no' 6j ! S)"  Û	õ
+N …>
+ 9ı~ 1o2Wí³ 1¤: 2à	r åÂ åa… å1numÀ  
+ç˜ák ¿î
+Gy(´!*sr­& ö ¯!
+øüŒ	ƒerror "A%v '$src'_Jµ &M 
+ 	 S= 1 "S. 3==  S
+N00ÖOa† Btrue"# Otag e/¨éW
+Y
+jq {	 ¬_expresionÁ8 ^ Of {$3 ~µb=#êA ö4µ WVşZ '::¬ \ ’ ] 	S , ¾ 
+
+± [Qbool1Â$* 1eq  G$ıaFnull_ 5ull" K/ll¬% † Y¨Qnull1¥ ¨î¿ J O}
+}
+L!¤ ¡ $ ölÖ / $%63°	 p?617 pÿVQ# -*-11_-*-
+#‹jğomj #OOİô; # For 8.5. Integratùk=8.6W 3try; = 1. T.l.F Æhuddle 0.1.8» 
+k@:_ 0.2
+¿€ B 	*		%,ú# ¨ {jsonTextFBset Y stBjson |p„ parse $J ¶
+$4G	 Ò b * “oo::classÍ0' Jƒ  	‹tcursor Ÿ ó EndOfTextException¸
+!REi 	F ²constructorˆ# ^	«½.==¾Âqthrow {¬8msg’ V-( ×-  $ 9msgª 
+Ï 	- fLöositiveRE {[1-9][[:digit:]]*_vöcardinalRE "-?(?:$A :|0)XaJ!raæn` .^ ÕÑ^ ‘exponentia §{[eE][+-]?” 6  \fRE "${  V}(?:$~ )­ 	a &)?¯ 	&# 3gbfor "Es§Text" sign˜kÁ t 5[ }( m  cmethodf°A_to_u#4setï-Â… «E i ƒ "myv ¹_next_json_«;
+H ± ’eekChar {æÕœ<1} ¶ ÑdH‘6dexOŠÙ %+$L }š ¬Cş„ Dincr;b Ó ê  g Bnextæ × nµ b + 1 <C(2ng "ã ]]“ u  3w 	< ½U$¯
+F   ÂassertNext {FHrgetÌ@ ä R 	5ê l!= $ch„? ÅW a 8« 9$chƒ 
+ö  ±ªZAJSON–qr} "TryªtRo rea:£÷‹ $atÍ ­ñK
+n d” io ‰6 ÔweatWhitğ/ 	* MUh [myËÛ,îhÅ2-1{No‘³.ñ  
+ 	¢  	 œ9¸exact -- $c^X C"\{"c a!myÁO@ ¦'!?"\[U ZArrayST "T oStringU 	"o    "tU ,Trğ¨ Q fQ _False¥  R nR ONullQ  Ÿ /R ëLComm». {  Ò '-"ëD /"0 1 2 3 4 5 6 7 8 9\9QreadN?/ °@, Ud"Inputà,hqJSON: 'ÿnText'"p 
+o 
+ Ó…	OY# ”>5tru/g gkÕ1	!s Ëü9/ch*my		« ×X elseÏ/2h 3K b~=gŒ  /	€¢{$  (my‹tÎR ! r! u! e! ú"::R" úğ • 	 Ü -İ f¬@ Ş a" à:D sD 	D « NÇIŞ	
+ànÑ	z 
+! u! l!  İ Š† à·lÚ 4 Â‡	9 1] /2]d /"/êD~sSolidus‹ 	… 
+ƒ ?"/*ç_StyleR ä&NlEİ" c½:\Ë “
+à  †	Ô æA  
+jz"/" "/*| # *#  y     try× 	# _MÊ¯~ ] > M " Aif {Z"]6g À h ù  "] æ *M ØôÁ, '/*' cannoâ?uembedde¦T'´¯Q„	   . D 	vO} ons$3‚ˆI
+Ú, expected */­¦ Ú © E¬ ür # € û N
+ë&IA $chÍr1\r"Í% €R	m  _ <aÑ	+ 
+   n3~*\[Í*my¥ ©/\]ª€ï	W7Ë 	 	Ø  »M4 Ğ/Û­ Z
+
+Q  > E6 ’œ ó’
+X, §Yarray~ï due to: '$ch' C 3 2  …
+ 6Å	
+Ä
+‰ èv F9×
+G .	 uıv) ?:"\{³ s	= w}vwƒ9ø 6	 l
+&  Â%
+8[ˆLä8
+‡ c OV	·  R':w éeHhê#¬ c +
+à.Á-MK 
+¸O  ¬'_# şÿÔFÓ	 ÷¥m
+Åregexp -stareq bZ"_ ç	‚G }ë 0 8 X { 	 ã ¦ã 7J*
++ Ñ Ë.0Ç 
+ÏÀ” i › 3 Kl"!\`   q5* "¨ı	X õ"m‰  	Ñ
+?""}g@ «
+oeq "\\¿
+t {= /"b † :"\b€ ) /"rl rl * Ø nl *= l fl *ú l tl *u°[øª‰ "%c" 0xZ q \\~o H"/" ¹ O"\\"$ õ }
+bescapeæk©Tacter^/in	 #  ;G9P#[j	ñÏ: ç  Y ‰*wc+
+9 
+ª./ ß 0 6 0q111215  04 14730 TÿU¢#
+#   YAML¡r×‰Î±ñ  See http://www.âorg/spec/1.1/
+C  ¹tcl,v 0.3.6(œx5:06:25!›(œ{I×+8Ó¢supports aPÔÑlimited subseT-r of the8–spec.
+#
+#a01‰›%¡]0.4.2´0}cmdline 
+Ì02nam`(xU!::R 4 §0‘load setO/ò s dict2dump lis
+ iœÂ†,U}­i{Ër# fixedFq groups:2somİ z-types.W 5 â# a plane scal)ÀRworkea³„matching¤É¡verting toyspecific;Ve #|1Ssome_TlŒ@#æjqlist !!zVÑ$treatmented-¾@ãOÍÂ#= Ş#i5²&1rs
+ô #Ø S/coll6h +ã ebÌ ryaml-taX0Ï p|İ{° £ Õ 1	A‚İ 6„ Ş ô e	!W-U&7N!isÚZ ŠºÇ    validate Sñ{timestamp int float;"İ#$#ö.ûz ƒ!!binary3::_) B 'g"!!] % FFloa_Wm ål ° m ) T š J shorthan²•!!!)O:S–org,2002:9 
+ P‹ ¼null:Value ˆ öGroup  {null "" ~O 1   a? 
+â0Etrue> A<ªon + yes yD DfalsE 
+F E { ¶ off - no nE 
+ llâ_dumpIndent   C‚
+ ÒWordWrap 40
+
+bÑ'
+ Eopts„f3[::y4::G*DÇR{file+ ${i	)‡filename™Ss{stream+ 
+/  - Rm.arg' A  ""n Cxed-õ{urs bulk“ù(null/true/false)L S:nullQ L òK E ÃC {""$ k"" ~}}N HtrueN N 1# %S µ T ¡  q}¢ 0$ 5
+U @S U £ óö 7nop¿}integerm	¸«6{toÍAthe ¢(not dumpek´[K }¼1] 2eÁ ;# Remove ?÷œâ
+´ˆ6n ÅTAB_IN_PLAIN¤ DTabs.Á”used onlyÔŞBentsßºòin quoted "..." '...'.’m    AT[  {Reserv #òdicators {@} can't Éğ#inR BR `R ‘SEQEND_NOZ …SEQ   {T\Óñ flow-sequence end '\]'Zl+in ‡[v, ...]± 7MAP_ ?MAP_ smapping^ }^  B{k: ` }` aANCHOR¿ QFOUND7QCould£ Òòthe anchor-name(current-version, " æ”refering"ª-Ş
+6ed)Ôñ MALFORM_D_QUOTEé{y#AparsÔ Qrror.Û #of" oánssing?Y SY ESingY _|Y :TAG âb "$p1"ºOAe wa”‡declaredcõINVALID_MERGE_KEY   {merge-key "<<1Rimpre
+1 in‚¿äscope(e.g. in Q)h ZEj »{malformed r Susing> R}
+}
+
+[Ã
+ A
+# Pò`_ APIs# 
+ŒQyaml2ŒUÖK	f$_gú¿K}Ù[×aBlockN" a’#
+;vz) Œg(DÍ¹¿j æömap "{\n} {\\n}"Q 36€ Rùj }U?Aî : Ã?× çT{argv)îÕ:³oV[_imp	bs argvĞ - 4s™A i¢# Dump TCLNNqto YAML$šCyamlñV"{iß	’2} {wordwÍ	?
+é: ö)X1*}$&# $K $H ™ 	D {3 ~ !˜{*}$dic€ }Æ ¼Y„ 6set¬	ñ ×& Ü¡# Start atX^İîAand ”¢through itpÄset out [joizs"---\n"Dß £@u] "\n"]á`Ğ1$ouÉÍ1# Oœ
+' 
+ZÂõÀ	T( GrBŸ 
+,bY\ l3setXC   $8 (‚ )' ¬ '  ) ­ P  * Cdata5  )rs q) ŒTç¾ ÷),1forªbr{buffer%Rv˜ 3 ¸¢fd [open $= " ru    [<6$fd ‘close $fdDE|(7 )V #  ¹
+)³ „length)  6 C y - ™	)å ½finished) 0Äƒ{Ãèvqupvar 1¬ j­• /op Œgæ¥êª ú#ã	eMdFargc_S$i…+[İ	Qgetop< vk #s  
+—VJœerr eq -1üƒ-C :Ÿ    "fileTó‹Ø$] "âK 
++K F «— tg N ÏU O ( è L % › °“N	[$’{m:(\w+)}ÀÄ?ype•91arg3"[ „!($n}ó?) "¤ñ,ô·,ùä   Š Ö)â[ < t1) $¬	 
+'  
+  
+  H—.
+ + û²	
+ı A
+# S;ƒ/Block C¢ #
+3TagÊg£-' r6J&taJ¾ •ú K  ü 	O Y!!str”#ir˜I$tag? ~õTDinfohX² -($$©R $& X  ¡cû [_getErrorMessageˆø '	ÏQ$pairÛ	_ Fí{$‹H [ã³[expr {de9!($1 ))}˜ø‰[ a³abase64Ä v N2[::$ „::decode9Ó Pø
+Ó ù´ "4	öĞ>×b * _plainy	X 
+ }¥G_toTo Ã@ 
+ê Hg r$"eq$”sstr ""]Åset lowerval	!to 	ù ”4typ‘} ‡W¯ (ƒv)mI$* 	|  Aif {ÖÑBpair› vcontinu~. Êø‡4'ntÅ #: 1.½1 eô^-?\d[\d,]*\d$|^\d$}Ì @ ó regsub -all ","/ 4 ""[V ×Sint $0 « ı   ÎÄ ó# don't run before "a ØÄ v{L3Í+sZM$val" ï µ 2 
+ß 
+ ,	A# !!ï‘!!true !!\^ ã—áù=] \7 c && [lÙì$4 ! $toval] >’O
+¬	E èv ı
+Šd)F}*#M§%5stra 2
+# ƒ4NodÕ
+q €&: 9 q{{statu0’%-1ï7Ir4rev)ª{å i.&	€7pos 4tagİ
+x1İ¨Å²9== $ W~	í~ ¢    _skipS²ûp2setÛSc¼bO, C " ‘ ìYeq "-:UAcc "> #c] 
+æQif {"=A$cc"3---¥;q KRe «¤%’_ungetc 2Œ g# [Spe ò# Since people perceivx6"-"ƒ1 as~>ntation,Q¡# nested bAÀƒs may be= ‡xsone les
+GK  ñto compensate, eüS¿, of course $if‚ ‘inside anÖª‘ q NPrñ x
+ 
+1.151A	 
+?5£$ 7 9%L ;&M =6 ?= A(V"  ||ö$<=kü} { ; # end documî	=
+øµØ	3"-"m 
+»i entrya 5posµ ! r# [196]. !l-U ı -seq-entry(n,c)4 E`Y2} [×1SubÚû $pos "SEQUENCE"]ò ê	\ $"?Ü g§y ~ ?nop| t :t Î 	˜ ì	ğ<Ü 1} {‡(osIU†rent+1}]Ñ ¹ i » MAPPINGÂ |Â øtÅıÉ &°­PĞ¬	; 
+Ï $">t FfoldH	8 …í s 
+ r <r mergeingg cª= ùø-<< Øˆ å ØJ —  \,=Qf¿	s» e P R
+Bne "­ ]Pwl 'g
+½
+W š	ş ¾
+A} [_Ïô ExpandedAliasesëgÒğ>B° w ¹ °- 1± 
+î
+ $"&Šcnode's# propert„$ hVTokenÖ
+Æ 	‚ $"*b Qaliasi™	! U U ƒs+	w! ÊZALIAS9 @!*$€ š “
+? · AÉ$ J 
+ˆ!&ˆ.ta†"ag—‘%k ídirective lineû \_getL 
+· …! “çò^[\[\]\{\}\"']$}å]  ±D1 + ®}WÃ \	±BFlowö#!  í$d/¿@ ø ğ ¡ú}¬NÌYq"BLOCK"y
+í < ±?š c?gw Š
+è{ˆø®ˆeq "NODEJ6 J	Apushxv5rev1`ˆ%unO|  ­ 
+Ö]¿—Ü#7”uW V Ohprev] == œh~ C_set&¶_‰
+t%C æ ñv Åy ˜ fÖ W V # u3 0& Mz· + úubÃT f4 Ä¹"< d õ ¤·j9e "o	\ µ QV dã] 	Æf	Ç '_sem\ [ <  ^ Cª!¹{\ 5pre„' Ò^o]‚ 5 Nprev>bØ<×=
+ê+Eú*g C ‡‡Z	ñg"\#…ype_name‰v€"	) ‘eq "list" Î5m(»«~’
+Î%ub¼ "geÏVue $iX cïÀdd—5 Mí08 I Ø LÎT[listw]ÛÈC{pos
+4newÆƒ$W ?â¾ûd‰is_blankµğR >newşO# ª1new€  w îê†kEÛ Ñ]²„9_ 73È 0º‡}°G# ã B÷vLjnïšuset key˜
+È-2key•åŸÍ ˜ ÈÖJ œ n¨ 
+ “Œ	p$h U
+}
+
+
+^Œaduplicøì3savLk order~ ğ~_8 ,é	;Atmp ä+í 	 2w	µ›2 !“´!Îtmp2($key)]}Fl2tmp2 Š wI Ó.,ñ"|" (line separator is")
+ßoing ">' ; ")O<jS{[,^ W)õexplicit chompingF IX4z
+ó q*5dchŠ)Ärepeat " " $R ¶´Eep $ƒ B € y.cÒ}RDLinep G) Q< $ba!jT"""hPQfirstL Õ, NOT ignoredXS(as aÙ•V`"ngbº%!rsdBâEue $rÒ Ctop ì8½i![_eofI o#	Óÿ )ÀG :€©sep "" sep# É *\n^÷Sy cÜ#Õm=4kip]Ç T f5 <=Ñ	¯ fê 
+Å§ Ş yš ¹$°/# -œ¶6}]]İÍ³ m @Apos]eX‘stop} {_sìÄ3 h\4- $eí w"strip" 6 +9kee â.¡ë 89 *clT 9 	6}
+	 =È
+5"Shş61be E.Eed (Ç =Ó B)"
+	  Ÿ†ºÁ 7&¯# in {> |}Ï‰$ {Ä&se¶ò ¾,×İ+¤	=ÿ
+tã
+#p ‰ digit]}Èò~  	† $:   |ÉoQE   ;–f7  <! X +X ?keeW wV ¡œ	‹ q# Note:/“ped after²;ao 	ÂB5WEİ	a# [162B1ns-¥'b-multi=
+m¥	!Inå%„{loop 0}`  t== 5} {’ Ô Ò2´=Qõ _òreStr {(?:[^:#\t \n]*(?::[^ w+)*(?:# G *)*- y ‚Q_getFS
+%$f º* *%Dtrim‚¢¹Øû ö"\né #NA; # e-œ$lbÕ"lP	x* f	-]A nopÔ  ¹†*Å × F™(q !0]õì — X 	 – Ÿ!lb;) % &y ±range $lb 1>2 Rif {!I´2› m6fpol ñ ‡9 ==–J ÛÕa K M
+	z¯ -!lb.-øl¨	8 f % Dsubs¿± 
+ox$loop+16scÜsÌ «úresult "$lb$subs	œ 
+  /¡&OFlow &"õ	Ÿ&¶jááê{¢ ßŒ
+,3&ØÆ{Ô"Ó n# 
+5 ?En" Õ	 Ö›lÊ Yî 
+­
+Û › $",Ù4end A ¹H"	!f}"eq³  § Ä‰	f 
+« 
+ `r«a³KDflowlM r8
+up }*n ö"tuıc /} ¡	\B]›+%è4"\[± 
+!ì'"#	²$]s Nq %e — àC%‹ı… K 	! ™×rå `6+	›XD	  
+Ö f:  EA 
+ ¼ ùñ„« şyKFLOW%6 ssn vå<} lr" "ƒR¢—  Ä 
+à ¿  X 7‚ Ş X qFkĞ% Ïq)-ISİ
+Ÿßº ½P 1open9!¢  ¬„ ¿-ı²  l
+ğD+ U	
+0	XtO K &i"qÚ  ú J K 
+  -¹‹ë:L¹=,·L¶ Ï F>\Èbsurrouo:-#Mm
+êM  ´êD7 WQuote[ì ßK'Îm s*Km S7 m O"\t"‚
+=NX	?"@"¸
+AkM5 `5 	B5 Ts# Planeõ=	o"ifF	‹©ŠüSÇjInFlow$ÑÓ	‰ 7j8		†j§Jd 1 #0Ù&/a# [timkWònning at JST]
+# 2001-12-15T02:59:43.1Z” è => 1008385183- D4t21- 0-05:00-  - ? -5Z 
+%5 † 0† Z 4527‡ 2´ 4"  ´ 39791600Ç”Uº0$éq2^\d - #} í	X¨÷ØErestr  {: 7 A ´Ø'im& a?:\d\d 
+# ñzone {Z|[-+]\d\d?(?:' #)?Nó%set canonical [subst -nobackslashes -nocommands {^($£ ƒ)[Tt ]($Œ ‚)\.\d+ ? szone)?$2*Ù ?ttma ;(?:d S Kc::tcl_¯Pd < 8.5‰7Œ$æ Š¸dt tm zone]: C<V $Z/eqWî"!!"bamp [c&7ïcan "$dt $tm"]+f ,Z" Ãág | -gmt 1n Ü 2‘{^([-+])(:B)$} ö ñnop sign d]} {set?÷ [format "$sign%02d:00" $d&µ ^ a\d\d):c )a 9h m™ Uset m%óh > 0 ? $h*60 + $m : C- $mv ğ,ñ-$m}] minutes" -&·P¿æET$dttmórmÏ/tmàÅ S
+h V 7$dtä 
+ipø ` ƒ
+êzAó}q  y ÁDÅë¡z83" -"û{%Y-%m-%d %k:%M:%S %ZòS { "6 { x w‚ QÍd9¾ @- 63$dt0 0i '
+ f !""I&° X$ {¾{ Ş]Û=Gš0q2„ «q{^%YAML4&h2	t¿C A  8 í
+X	v 2   ÜRYAMLV) 3) $˜G 	.D3 c]}   {¯!b
+´6ôLLEGAL_YAML_DIRECTIVE^®o{^%TAG6TAGO¦ 9 “set handll4v Ù Ò!$|^!\w*!$} $7 /]}Ù " • oprefix•• 	7 • $ö æ€`(é )] » €X BTagHOÖ
+IokenÍ F 
+Ø1(!|]‚)(.*)} $5 4nop¢[namedíJ… or non-1c'Taƒ÷Ï b!)R# loc°Q 
+-W    !D j# yamlƒ 2 Ê¤r7 ! œ
+ %*ı(šƒHt	#[k	y!<(.+)>;uri‡‚Verbatim¼ · £ .r{^[\w:/¨6ÛK ¨ ›TAG_HANDLÈë C  ]†Û;!<$A$q>ô4oubJğ’# captureû\dËsUwith ~n.Ğz#a(?:\")ƒ#Ä\\\"]*(?:\\. 2)*)" ¥]=  ]k#á* ãz2÷]]0³# [116] nb-ïe#åIõ{[ \t]*\n[\t ]*}®C"\r"ã`	5 –([^\r])\r0 5{\1a1 ( ?, 9"\n\ ² d2] s-s³ ®o"(nù$#Ï] $.(K7'R ???)®ñ
+# chop off outer ""s and eVituteémA# Th JÁes more than\&4RFCµ&ed8 !E‚# but itC 2cov›&3m av‰t'Gppedà4-no‘sµIá#1Òä7"$^ cXœÙ'Ø'Õ!''
+ Ñ'ĞSSĞ 2ĞRĞ‰ü5''}8'§%ÆT {'} ½A æÒq
+# [155¤(3 nb¥(char-in*
+õQsep {2(,¦<¼
+[^$sep:# c( b(* H [xİ	p(Ô
+!.© Ws¸(
+˜(KÄ_getc 0]æ#Ó	-*€ $"$` ¦S]uñ µ4 brGenericUYlL ){³Éö T[z-À[) fstart)6(“b $buff 
+Y 3Ö
+]K1† (%en€ v[5
+éš¹51}{N|	ò§Î °E)¤Vlen -y aY ¤·ŸAincr†+eC) $lö á" 4  üûÄ5pac˜3#edJFproc	`Ø¡
+,b î©¥^[^ \t\n,\Ù Î+@$- +…3 {{ğ28SkiÒ,  (ğˆSindexsŸ gÿ ó%±˜/" *(²&M  b2—{: 	0F) ^ #^ ˜í À  á }¯1ğ‚
+		# AnyYQ.yÂ, do nothing3 
+R Ÿ) 7(-1"--2of lmô(line-end trimed)
+# (cannot–#/°CÏ {{scrolled wQÄPK[	|RŸ•apos ==˜^U B î)o 5ine/ q ÏEpos-—, 2	ÅNF ãüP©.\8$ *Üc pÀ.f¨iˆ ×ƒ$pos + 1wÈ* ² 9*ã 5X ƒ.e„ ê W	ÿG … $space] °ú 4 0] ]4èRf
+ÂzÓ ?ä  -1 : 0}m LineNumm 	5revÏ o0u ±#a[split\vŒ0]” cVşl› zaw¬l !eq¿ .Œ	ÓÔm ¬o À Hh?eofÀ	? 	-Ô#||-º–1µ)8gR8¢Ã[ ísG =Oü ìrF ^ $posK 	*o {{len³Èá-ØA$ ˜& f{<t¨:&© Ó
+Õ{&2end|‚d feplace. ‡RaÁRŞ ®÷
+2G-ƒ 	ÇA˜÷N# 0hÕ5 Â)cVÚ îË0lß÷±sä,{ñE”#½]/ ":$ 1) $9 |F-b \ ó©b j ]ò.rØÌP ³ 	—x{ID {p19¦l»2num;Ë[p1 !=N!™ Ç"line($num):³$¢"$u T($ID)BZ 8 Pq}
+
+# Fi¶'#nd39sÎ7ô‘of a YAML\	ñpxT{lineáÑ catch [ú1-inğâ-- {^\s{1,}} "	"+¸ ¸o¦İS] - 3z:\2#
+#To1ersá"#õ®Bimp_&bnÏdata {offsetóay†Cset Ïè2 "$9 ¹ jAW{ } $8 ¶h[ƒ  \)j]ä9<,ng¾Œİ&
+‹DBdataU ]Š bScalar' Òâ/ ]Ó,Olist{ ûãÀ6 =H @HG8subó \ CH. %epO	f2sub,	1" ?j:c –+ø Ñoõ - $sepØo6sub†å3] "î nÓb $o po1	
+ O"dicÉB¢æ ¡u ríF 0 tW_$key:x_šRaÁ£İk
+†{> vA›•$  L?/ »h ,||+ /: + -+ „ 3_doBä'ó
+<‚S[_doF G8 ª•Creates a˜Î Yafor duòF}” IFAŒU	Ó!wVLF""|-Q; P ğ 0/”V -W _²UlodedU ûS §"•  „trimrighJM·èåGZ 
+Hã $ #\nÍa ¢µ° ê8 ¿tFolds aê‚of text,ƒ^}cessaryÀ»i	´º€1# D­fado any,D if Év£ is set to$×	G ÁÖ ye fC% 3] >Úœ }Drset wra‹ó _simple_justifyA > % "‚"Ì
+n:%">  $Z "© «b”ûhttp://wiki.tcl.tk/1774‡œ û{text width {wrap \n} {cut&2Rbrk "‚ Ğ	6{}}w5‘text] > $\ , ´&exµb’ Ã*$brk+1}]Áÿ  R   Ë3lasõJL ƒ eo$brk < 0³>=cut4 JBı B$texÈ `% ¹ œ[Æ ¯ 
+4  ş7Hb D0 $brk] @B > 
+ Á *Ak‹RTYPES€ s  ‰d::type—7# 5>(¡‚¿ " -  Buper¯¹6dic‘ó publicMethods {f ³    tag !!m  Ã4yes"ÎºC h {args†= 5f {ê‡$args] %‚Tò{wrong # args: sÈI%be=×^ C?keyİØ{Î 	¥EB }Š . ê
+ELé	Q [arg­cV_to_nÒo%6G
+ 
+•äOX,!mafsultL]E w 2$N {
+	zBlist\_ } ù  Sseq
+	¤ 	? 
+@¢Y™/	’4seq¡’D‘makeChildqV84tagñset full_path_to_ä	ûq::$typeºì$; ÏmGc@TYPE@š8¿@TAG@ $tag]!	,AClasqˆw &no{ XM´	WÉ C
+}
+
+‘çö& qN [O £4strµ€ 2 ß3%!! > f¬t‘t6 #inäp2 CnullÒo4 øoOtrue4 Efals-p6 g"!!	 8 Û8ã8_]
+
+
+  ÿÿÿÿÿ_P         êqúÄ
