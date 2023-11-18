@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <231118.1007>
+#  Last Modified : <231118.1023>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -74,7 +74,7 @@
 #' Usage as command line application for extraction of Markdown comments prefixed with `#'`:
 #'
 #' ```
-#' mkdoc inputcodefile outputfile.md ?--css file.css --header header.html --foother footer.html?
+#' mkdoc inputcodefile outputfile.md ?--css file.css --header header.html --footer footer.html?
 #' ```
 #'
 #' Usage as command line application for conversion of Markdown to HTML:

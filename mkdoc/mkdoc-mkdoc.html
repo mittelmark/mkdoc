@@ -2,84 +2,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: ; script-src 'self' 'nonce-d717cfb5d902616b7024920ae20346a8494f7832145c90e0' ; style-src 'self' 'unsafe-inline'" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="title" content="mkdoc::mkdoc 0.8.0">
 <meta name="author" content="Detlef Groth, Schwielowsee, Germany">
 <title>mkdoc::mkdoc 0.8.0</title>
-<style>
-body {
-    margin-left: 10%; margin-right: 10%;
-    font-family: Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
-    max-width: 90%;
-}
-pre {
-    padding-top:	1ex;
-    padding-bottom:	1ex;
-    padding-left:	2ex;
-    padding-right:	1ex;
-    width:		100%;
-    color: 		black;
-    background: 	#fff4e4;
-    border-top:		1px solid black;
-    border-bottom:		1px solid black;
-    font-family: Monaco, Consolas, "Liberation Mono", Menlo, Courier, monospace;
-}
-a {
-    text-decoration: none
-}
-pre.synopsis {
-    background: #cceeff;
-}
-pre.code code.tclin {
-    background-color: #ffeeee;
-}
-pre.code code.tclout {
-    background-color: #ffffee;
-}
-code {
-    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
-}
-h1,h2, h3,h4 {
-    font-family:	sans-serif;
-    background: 	transparent;
-}
-h1 {
-    font-size: 120%;
-    text-align: center;
-}
-
-h2.author, h2.date {
-    text-align: center;
-    color: black;
-}
-h2 {    font-size: 110%; }
-h3, h4 {  font-size: 100% }
-div.title h1 {
-    font-family: sans-serif;
-    font-size:   120%;
-    background:  transparent;
-    text-align:  center;
-    color:       black;
-}
-div.author h3, div.date h3 {
-    font-family:	sans-serif;
-    font-size:	110%;
-    background: 	transparent;
-    text-align:	center;
-    color: black ;
-}
-h2, h3 {
-    margin-top:  1em;
-    font-family: sans-serif;
-    font-size:	 110%;
-    color:	 #005A9C;
-    background:  transparent;
-    text-align:	 left;
-}
-</style>
+<link rel="stylesheet" href="mkdoc.css">
+    
+    
 </head>
 <body>
+    
 
 
 <h1 class="title">mkdoc::mkdoc 0.8.0</h1>
@@ -125,7 +57,7 @@ mkdoc::mkdoc inputfile outputfile ?--css file.css --header header.html --footer 
 
 <p>Usage as command line application for extraction of Markdown comments prefixed with <code>#'</code>:</p>
 
-<pre class='code'><code>mkdoc inputcodefile outputfile.md ?--css file.css --header header.html --foother footer.html?</code></pre>
+<pre class='code'><code>mkdoc inputcodefile outputfile.md ?--css file.css --header header.html --footer footer.html?</code></pre>
 
 <p>Usage as command line application for conversion of Markdown to HTML:</p>
 
@@ -233,7 +165,7 @@ the following style information:</p>
 Please note, that the embedded style sheet centers level 1 and level 3 headers, there are intended to be used
 for the page title (h1), author (h3) and date information (h3) on top of the page.</p>
 
-<pre class='code'><code>  #'  ## &amp;lt;a name=&amp;quot;sectionname&amp;quot;&amp;gt;Section title&amp;lt;/a&amp;gt;
+<pre class='code'><code>  #'  ## &lt;a name=&quot;sectionname&quot;&gt;Section title&lt;/a&gt;
   #'    
   #'  Some free text that follows after the required empty 
   #'  line above ...</code></pre>
@@ -289,7 +221,7 @@ the name targets using html code like so:</p>
 
 <pre class='code'><code>#' Some text before
 #'
-#' &amp;gt; this will be indented
+#' &gt; this will be indented
 #'
 #' This will be not indented again</code></pre>
 
@@ -305,7 +237,7 @@ the name targets using html code like so:</p>
 
 <p>Also lists can be indented:</p>
 
-<pre class='code'><code>&amp;gt; - item 1
+<pre class='code'><code>&gt; - item 1
   - item 2
   - item 3</code></pre>
 
@@ -327,7 +259,7 @@ and at the end of the text. Bold is achieved by dublicating those symbols:
 Monospace font appears within backticks.
 Here an example:</p>
 
-<pre class='code'><code>#' &amp;gt; I am _italic_ and I am __bold__! But I am programming code: `ls -l`</code></pre>
+<pre class='code'><code>#' &gt; I am _italic_ and I am __bold__! But I am programming code: `ls -l`</code></pre>
 
 <blockquote>
 <p>I am <em>italic</em> and I am <strong>bold</strong>! But I am programming code: <code>ls -l</code></p>
@@ -339,12 +271,12 @@ Here an example:</p>
 or by embracing the code block with triple backticks on top and on bottom. Here an example:</p>
 
 <pre class='code'><code>#' ```
-#' puts &amp;quot;Hello World!&amp;quot;
+#' puts &quot;Hello World!&quot;
 #' ```</code></pre>
 
 <p>Here the output:</p>
 
-<pre class='code'><code>puts &amp;quot;Hello World!&amp;quot;</code></pre>
+<pre class='code'><code>puts &quot;Hello World!&quot;</code></pre>
 
 <p><strong>Images</strong></p>
 
@@ -487,5 +419,8 @@ modifications.</p>
 subject to the restrictions as set forth in subparagraph (c) (1) (ii) of
 the Rights in Technical Data and Computer Software Clause as DFARS
 252.227-7013 and FAR 52.227-19.</p>
-</body>
-</html>
+
+    
+    </body>
+    </html>
+
