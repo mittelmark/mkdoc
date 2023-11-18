@@ -65,7 +65,7 @@ itself.
 These comments are used to create the longer manual which can be seen here: 
 [mkdoc-mkdoc.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc-mkdoc.html).
 
-An example using syntax hilighting can be seen here:
+An example using syntax hilighting can be seen here (seems not to work in preview mode):
 
 * [hilight.md](https://github.com/mittelmark/mkdoc/blob/master/examples/hilight.md)
 * [hilight.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/examples/hilight.html).
