@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <230907.0907>
+#  Last Modified : <231118.0903>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -17,6 +17,7 @@
 #                  2022-02-09 Release 0.6
 #                  2022-04-XX Release 0.7 (minimal)
 #                  2023-09-07 Release 0.7.1 (img tag fix)
+#                  2023-11-18 Release 0.8.0 
 #	
 ##############################################################################
 #
@@ -31,7 +32,7 @@
 #
 ##############################################################################
 #' ---
-#' title: mkdoc::mkdoc 0.7.1
+#' title: mkdoc::mkdoc 0.8.0
 #' author: Detlef Groth, Schwielowsee, Germany
 #' css: mkdoc.css
 #' ---
@@ -66,19 +67,21 @@
 #'
 #' ```
 #' package require mkdoc::mkdoc
-#' mkdoc::mkdoc inputfile outputfile ?--css file.css?
+#' mkdoc::mkdoc inputfile outputfile ?--css file.css --header header.html --footer footer.html\
+#'    --javascript hilightjs|file1.js,file2.js?
 #' ```
 #'
 #' Usage as command line application for extraction of Markdown comments prefixed with `#'`:
 #'
 #' ```
-#' mkdoc inputfile outputfile ?--css file.css?
+#' mkdoc inputcodefile outputfile.md ?--css file.css --header header.html --foother footer.html?
 #' ```
 #'
 #' Usage as command line application for conversion of Markdown to HTML:
 #'
 #' ```
-#' mkdoc inputfile.md outputfile.html ?--css file.css?
+#' mkdoc inputfile.md outputfile.html ?--css file.css,file2.css --header header.html \
+#'   --footer footer.html --javascript highlighjs|filename1,filename2?
 #' ```
 #'
 #' ## <a name='description'>DESCRIPTION</a>
@@ -98,7 +101,7 @@
 #' ## <a name='command'>COMMAND</a>
 #'
 #'  <a name="mkdoc"> </a>
-#' **mkdoc::mkdoc** *infile outfile ?--css file.css?*
+#' **mkdoc::mkdoc** *infile outfile ?--css file.css --header header.html --footer footer.html?*
 #' 
 #' > Extracts the documentation in Markdown format from *infile* and writes the documentation 
 #'    to *outfile* either in Markdown, Doctools  or HTML format. 
@@ -106,11 +109,20 @@
 #' > - *infile* - file with embedded markdown documentation
 #'   - *outfile* -  name of output file extension
 #'   - *--css cssfile* if outfile is an HTML file use the given *cssfile*
+#'   - *--footer footer.html* if outfile is an HTML file add this footer before the closing body tag
+#'   - *--header header.html* if outfile is an HTML file add this header after  the opening body tag
 #'     
-#' > If the file extension of the outfile is either html or htm a HTML file is created. If the output file has other 
-#'   file extension the documentation after _#'_ comments is simply extracted and stored in the given _outfile_, *-mode* flag  (one of -html, -md, -pandoc) is not given, the output format is taken from the file extension of the output file, either *.html* for HTML or *.md* for Markdown format. This deduction from the filetype can be overwritten giving either `-html` or `-md` as command line flags. If as mode `-pandoc` is given, the Markdown markup code as well contains the YAML header.
-#'   If infile has the extension .md (Markdown) or -man (Doctools) than conversion to html will be performed, outfile file extension
-#'   In this case must be .html. If output is html a *--css* flag can be given to use the given stylesheet file instead of the default style sheet embedded within the mkdoc code.
+#' > If the file extension of the outfile is either html or htm a HTML file is created. If the output
+#'   file has other file extension the documentation after _#'_ comments is simply extracted and stored
+#'   in the given _outfile_, *-mode* flag  (one of -html, -md, -pandoc) is not given, the output format
+#'   is taken from the file extension of the output file, either *.html* for HTML or *.md* for Markdown format.
+#'   This deduction from the filetype can be overwritten giving either `-html` or `-md` as command line flags.
+#'   If as mode `-pandoc` is given, the Markdown markup code as well contains the YAML header.
+#'   If infile has the extension .md (Markdown) or -man (Doctools) than conversion to html will be performed,
+#'   the outfile file extension In this case must be .html.
+#'   If output is html a *--css* flag can be given to use the given stylesheet file instead of the default
+#'   style sheet embedded within the mkdoc code. As well since version 0.8.0 a --header and --footer option
+#'   is available to add HTML code at the beginning and at the end of the document.
 #'  
 #' > Example:
 #'
@@ -124,9 +136,8 @@ package require Tcl 8.6
 
 package require yaml
 package require Markdown
-package require hook
 
-package provide mkdoc 0.7.1
+package provide mkdoc 0.8.0
 
 namespace eval mkdoc {
     variable deindent [list \n\t \n "\n    " \n]
@@ -135,16 +146,22 @@ namespace eval mkdoc {
 	<!DOCTYPE html>
 	<html>
 	<head>
-	<meta http-equiv="Content-Security-Policy" content="default-src 'self' data: ; script-src 'self' 'nonce-d717cfb5d902616b7024920ae20346a8494f7832145c90e0' ; style-src 'self' 'unsafe-inline'" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta name="title" content="$document(title)">
 	<meta name="author" content="$document(author)">
 	<title>$document(title)</title>
 	$style
+        
+        $document(javascript)
 	</head>
 	<body>
+        $document(header)
     }]
-
+    variable footer [string map $deindent {
+        $document(footer)
+        </body>
+        </html>
+    }]
     variable htmlstart [string map $deindent {
 	<h1 class="title">$document(title)</h1>
 	<h2 class="author">$document(author)</h2>
@@ -158,78 +175,19 @@ namespace eval mkdoc {
 	    max-width: 90%;
 	}
 	pre {
-	    padding-top:	1ex;
-	    padding-bottom:	1ex;
-	    padding-left:	2ex;
-	    padding-right:	1ex;
-	    width:		100%;
-	    color: 		black;
-	    background: 	#fff4e4;
-	    border-top:		1px solid black;
-	    border-bottom:		1px solid black;
 	    font-family: Monaco, Consolas, "Liberation Mono", Menlo, Courier, monospace;
-	}
-	a {
-	    text-decoration: none
-	}
-	pre.synopsis {
-	    background: #cceeff;
-	}
-	pre.code code.tclin {
-	    background-color: #ffeeee;
-	}
-	pre.code code.tclout {
-	    background-color: #ffffee;
-	}
-	code {
-	    font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
-	}
-	h1,h2, h3,h4 {
-	    font-family:	sans-serif;
-	    background: 	transparent;
-	}
-	h1 {
-	    font-size: 120%;
-	    text-align: center;
-	}
-
-	h2.author, h2.date {
-	    text-align: center;
-	    color: black;
-	}
-	h2 {    font-size: 110%; }
-	h3, h4 {  font-size: 100% }
-	div.title h1 {
-	    font-family: sans-serif;
-	    font-size:   120%;
-	    background:  transparent;
-	    text-align:  center;
-	    color:       black;
-	}
-	div.author h3, div.date h3 {
-	    font-family:	sans-serif;
-	    font-size:	110%;
-	    background: 	transparent;
-	    text-align:	center;
-	    color: black ;
-	}
-	h2, h3 {
-	    margin-top:  1em;
-	    font-family: sans-serif;
-	    font-size:	 110%;
-	    color:	 #005A9C;
-	    background:  transparent;
-	    text-align:	 left;
 	}
     }]
 } 
 
 proc mkdoc::mkdoc {filename outfile args} {
+    variable deindent [list \n\t \n "\n    " \n]    
     variable htmltemplate
+    variable footer
     variable htmlstart
     variable mkdocstyle
 
-    array set arg [list --css ""]
+    array set arg [list --css "" --footer "" --header "" --javascript ""]
     array set arg $args
     if {[file extension $filename] eq [file extension $outfile]} {
 	return -code error "Error: infile and outfile must have different file extensions!"
@@ -243,8 +201,6 @@ proc mkdoc::mkdoc {filename outfile args} {
         set inmode markup
     }
 
-    hook call mkdoc::mkdoc Processing $filename $inmode $outmode
-    
     set markdown ""
     if [catch {
 	open $filename r
@@ -274,15 +230,17 @@ proc mkdoc::mkdoc {filename outfile args} {
         }
         close $infh
         set yamldict \
-	    [dict create \
-		 title  "Documentation [file tail [file rootname $filename]]" \
-		 author NN \
-		 date   [clock format [clock seconds] -format "%Y-%m-%d"] \
-		 css    mkdoc.css]
+              [dict create \
+               title  "Documentation [file tail [file rootname $filename]]" \
+               author NN \
+               date   [clock format [clock seconds] -format "%Y-%m-%d"] \
+               css    mkdoc.css \
+               footer   "" \
+               header   "" \
+               javascript "" \
+               ]
 
-	hook call mkdoc::mkdoc Header/Defaults $yamldict
-
-	set mdhtml ""
+        set mdhtml ""
         set yamlflag false
         set yamltext ""
         set hasyaml false
@@ -298,8 +256,6 @@ proc mkdoc::mkdoc {filename outfile args} {
 		
                 set yamldict [dict merge $yamldict [yaml::yaml2dict $yamltext]]
 
-		hook call mkdoc::mkdoc Header/YAML $yamldict
-
                 set yamlflag false
             } elseif {$yamlflag} {
                 append yamltext "$line\n"
@@ -309,9 +265,44 @@ proc mkdoc::mkdoc {filename outfile args} {
             }
         }
         if {$arg(--css) ne ""} {
-            dict set yamldict css $arg(--css)
+            set css ""
+            foreach css [string split $arg(--css) ","] {
+                append css   "<link rel=\"stylesheet\" href=\"$css\">"
+            }
+            dict set yamldict css $css
         }
-
+        if {$arg(--javascript) ne ""} {
+            if {$arg(--javascript) eq "highlightjs"} {
+                dict set yamldict javascript [string map $deindent {
+                <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">
+                <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+                <!-- tcl must be loaded extra -->
+                <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/languages/tcl.min.js"></script>
+                <!-- Initialize highlight.js -->
+                <script>hljs.highlightAll();</script>
+                 }]
+            } else {
+                set jscode ""
+                foreach js [string split $arg(--javascript) ","] {
+                    append jscode "<script src=\"$js\"> </script>"
+                }
+               dict set yamldict javascript $jscode
+            }
+        }
+        if {$arg(--header) ne ""} {
+            if {[file exists $arg(--header)]} {
+                set infh [open $arg(--header) r]
+                dict set yamldict header [read $infh]
+                close $infh
+            }
+        }
+        if {$arg(--footer) ne ""} {
+            if {[file exists $arg(--footer)]} {
+                set infh [open $arg(--footer) r]
+                dict set yamldict footer [read $infh]
+                close $infh
+            }
+        }
 	# Regenerate yamltext from the final dict (to report the final CSS reference)
 	set yamltext "---\n"
 	foreach k [lsort -dict [dict keys $yamldict]] {
@@ -319,16 +310,17 @@ proc mkdoc::mkdoc {filename outfile args} {
 	}
 	append yamltext "---"
 
-	hook call mkdoc::mkdoc Header/Final $yamldict
-	
 	set style <style>$mkdocstyle</style>
 
         if {$outmode eq "html"} {
             if {[dict get $yamldict css] ne "mkdoc.css"} {
 		# Switch from embedded style to external link
-                set style "<link rel=\"stylesheet\" href=\"[dict get $yamldict css]\">"
+                set style [dict get $yamldict css]
             }
             set html [Markdown::convert $mdhtml]
+            ## fixing curly brace issues in backtick code chunk
+            set html [regsub -all "code class='\{" $html {code class='}] 
+            set html [regsub -all "code class='(\[^'\]+)\}'" $html {code class='\1'}]             
             set out [open $outfile w 0644]
             foreach key [dict keys $yamldict] {
                 set document($key) [dict get $yamldict $key]
@@ -343,7 +335,8 @@ proc mkdoc::mkdoc {filename outfile args} {
                 puts $out $start
             }
             puts $out $html
-            puts $out "</body>\n</html>"
+            set footer [subst -nobackslashes -nocommands $footer]
+            puts $out $footer
             close $out
         } else {
             set out [open $outfile w 0644]
@@ -352,7 +345,6 @@ proc mkdoc::mkdoc {filename outfile args} {
             close $out
         }
 
-	hook call mkdoc::mkdoc Done $outfile
     }
 }
 
@@ -367,8 +359,8 @@ proc mkdoc::mkdoc {filename outfile args} {
 #' ## <a name="example">EXAMPLE</a>
 #' 
 #' ```
-#' puts "Hello mkdoc package"
-#' puts "I am in the example section"
+#' puts {Hello mkdoc package}
+#' puts {I am in the example section}
 #' ```
 #' 
 proc ::mkdoc::run {argv} {
@@ -499,10 +491,10 @@ proc ::mkdoc::run {argv} {
 #' This will produce in HTML mode a clickable hyperlink list. You should however create
 #' the name targets using html code like so:
 #'
-#' ```
-#' ## <a name='synopsis'>Synopsis</a> 
-#' ```
-#' 
+#'
+#'      <a name='synopsis'>Synopsis2</a> 
+#'
+#'
 #' **Hyperlinks**
 #'
 #' Hyperlinks are written with the following markup code:
@@ -655,9 +647,20 @@ proc ::mkdoc::run {argv} {
 #'      - creating tcllib compatible manual page
 #'      - aku changes and fixes to include mkdoc into tcllib's infrastructure
 #'      - splitting of command line app to the apps folder
-#'      - adding hook package requirement
+#'      - adding hook package requirement (benefit?)
 #'      - changing license to BSD
 #' - 2023-09-07 Release 0.7.1 - image tag fix 
+#' - 2023-11-17 Release 0.8.0 
+#'      - removed hook package, sorry do not understand what it is doing
+#'        and what is the benefit and I could not extend my code with this 
+#'      - adding --header and --footer options
+#'      - adding --javascript option, single oder multiple files
+#'      - extending --css option, single or multiple files
+#'      - support for syntax highlighting using hilightjs Javascript
+#'      - fixing issues with triple backtick codes, by fixing markdown package
+#'        (issue is done on tcllib)
+#'      - adding example file in examples to show syntax highlighting
+#'      - adding Makefile to build standalone application using tpack (80kb)
 #'
 #' ## <a name='todo'>TODO</a>
 #'
@@ -669,7 +672,7 @@ proc ::mkdoc::run {argv} {
 #'
 #' ## <a name='license'>LICENSE AND COPYRIGHT</a>
 #'
-#' Markdown extractor and converter mkdoc::mkdoc, version 0.7.1
+#' Markdown extractor and converter mkdoc::mkdoc, version 0.8.0
 #'
 #' Copyright (c) 2019-23  Detlef Groth, E-mail: <detlef(at)dgroth(dot)de>
 #' 

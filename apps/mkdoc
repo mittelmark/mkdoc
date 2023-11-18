@@ -4,10 +4,10 @@ exec tclsh "$0" "$@"
 
 package require Tcl 8.6
 package require mkdoc
-package require hook
 
 set Usage [string map [list "\n    " "\n"] {
     Usage: __APP__ ?[--help|version]? INFILE OUTFILE ?[--css file.css]?
+           ?[--header header.html]? ?[--footer footer.html]?
 
     mkdoc - code documentation tool to process embedded Markdown markup
             given after "#'" comments
@@ -24,12 +24,14 @@ set Usage [string map [list "\n    " "\n"] {
 
     Optional arguments:
 
-        --help         - display this help page, and exit
-        --version      - display version number, and exit
-        --license      - display license information, and exit
-        --css CSSFILE  - use the specified CSSFILE instead of internal default 
-                         mkdoc.css
-
+        --help            - display this help page, and exit
+        --version         - display version number, and exit
+        --license         - display license information, and exit
+        --css CSSFILE     - use the specified CSSFILE instead of internal default 
+                            mkdoc.css
+        --header HTMLFILE - file with HTML code to be included after the body tag
+        --footer HTMLFILE - file with HTML code to be included before the closing
+                            body tag                            
     Examples:
 
         # create manual page for mkdoc.tcl itself 
@@ -44,14 +46,17 @@ set Usage [string map [list "\n    " "\n"] {
 
         # convert a Markdown file to HTML
         __APP__ sample.md sample.html
-
-    Author: @ Dr. Detlef Groth, Schwielowsee, 2019-2022
+        
+        # convert a Markdown file to HTML with own css, header and foot
+        __APP__ sample.md sample.html --css my.css --footer foot.html --header head.html
+        
+    Author: @ Dr. Detlef Groth, Schwielowsee, 2019-2023
 
     License: BSD
 }]
 
 if {[lsearch -exact $argv {--version}] > -1} {
-    puts "[package provide mkdoc::mkdoc]"
+    puts "[package provide mkdoc]"
     return
 }
 if {[lsearch -exact $argv {--license}] > -1} {
@@ -66,7 +71,6 @@ if {[llength $argv] < 2 || [lsearch -exact $argv {--help}] > -1} {
     
 } elseif {[llength $argv] >= 2 && [lsearch $argv {--run}] == 1} {
     mkdoc::run $argv 
-
 } elseif {[llength $argv] == 2} {
     if {[regexp {^-.} [lindex $argv 1]]} {
 	puts stderr "Error: wrong outfile name [lindex $argv 1]"
@@ -75,29 +79,6 @@ if {[llength $argv] < 2 || [lsearch -exact $argv {--help}] > -1} {
     mkdoc::mkdoc [lindex $argv 0] [lindex $argv 1]
 
 } elseif {[llength $argv] > 2} {
-
-    proc Report {event settings} {
-	set label [dict get {
-	    D Defaults
-	    Y YAML....
-	    F Final...
-	} $event]
-	puts "$label $settings"
-    }
-
-    proc Done {outfile} {
-	puts "Results written to `$outfile`."
-    }
-
-    proc Processing {infile inmode outmode} {
-	puts "Processing $inmode file `$infile` for $outmode."
-    }
-    
-    #hook bind mkdoc::mkdoc Header/Defaults x {::Report D}
-    hook bind mkdoc::mkdoc Header/YAML     x {::Report Y}
-    hook bind mkdoc::mkdoc Header/Final    x {::Report F}
-    hook bind mkdoc::mkdoc Done            x ::Done
-    hook bind mkdoc::mkdoc Processing      x ::Processing
     mkdoc::mkdoc {*}$argv
 }
 
