@@ -1,0 +1,95 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="title" content="Documentation hilight">
+<meta name="author" content="NN">
+<title>Documentation hilight</title>
+<style>
+body {
+    margin-left: 10%; margin-right: 10%;
+    font-family: Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
+    max-width: 90%;
+}
+pre {
+    font-family: Monaco, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+</style>
+    
+    
+            <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">
+            <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+            <!-- tcl must be loaded extra -->
+            <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/languages/tcl.min.js"></script>
+            <!-- Initialize highlight.js -->
+            <script>hljs.highlightAll();</script>
+             
+</head>
+<body>
+    
+
+<h1>Syntax hilight demo</h1>
+
+<p>This is an example to show the use of the Javascript library hightlightjs.</p>
+
+<h2>Document creation</h2>
+
+<p>The Markdown file can be converted with syntax highlighting like this:</p>
+
+<pre class='code'><code>mkdoc example.md example.html --javascript highlightjs</code></pre>
+
+<h2>Code block examples in Tcl</h2>
+
+<p>Just indented code block without language marker will work by automatic recognition:</p>
+
+<pre><code>#!/usr/bin/env tclsh
+puts &quot;Hello&quot;</code></pre>
+
+<p>Now a fenced code block which should support syntax highlighting:</p>
+
+<pre class='code'><code class='tcl'>puts &quot;hello 1&quot;
+puts &quot;hello 2&quot;
+echo &quot;Hi&quot;
+proc test { } { }</code></pre>
+
+<p>Now a fenced block with curly braces.</p>
+
+<pre class='code'><code class='tcl'>proc test {{x 1}} {
+    if {$x &gt; 1} {
+        puts yes
+    }   
+}    
+puts &quot;hello 1&quot;
+puts &quot;hello 2&quot;</code></pre>
+
+<p>Now a fenced block with curly braces and attributes.</p>
+
+<pre class='code'><code class='tcl'>proc test {{x 1}} {
+    if {$x &gt; 1} {
+        puts yes
+    }   
+}    
+puts &quot;hello 1&quot;
+puts &quot;hello 2&quot;</code></pre>
+
+<h2>Other languages</h2>
+
+<p>Here a Javascript example:</p>
+
+<pre class='code'><code class='javascript'>function greet() {
+      console.log(&quot;Hello, world!&quot;);
+}
+greet();</code></pre>
+
+<p>And here a Python example:</p>
+
+<pre class='code'><code class='python'>def test():
+    print(&quot;testig&quot;)
+
+test();</code></pre>
+
+    
+    </body>
+    </html>
+

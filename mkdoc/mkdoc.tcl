@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <231118.0903>
+#  Last Modified : <231118.1007>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -67,7 +67,7 @@
 #'
 #' ```
 #' package require mkdoc::mkdoc
-#' mkdoc::mkdoc inputfile outputfile ?--css file.css --header header.html --footer footer.html\
+#' mkdoc::mkdoc inputfile outputfile ?--css file.css --header header.html --footer footer.html \
 #'    --javascript hilightjs|file1.js,file2.js?
 #' ```
 #'
@@ -266,8 +266,8 @@ proc mkdoc::mkdoc {filename outfile args} {
         }
         if {$arg(--css) ne ""} {
             set css ""
-            foreach css [string split $arg(--css) ","] {
-                append css   "<link rel=\"stylesheet\" href=\"$css\">"
+            foreach cs [split $arg(--css) ","] {
+                append css   "<link rel=\"stylesheet\" href=\"$cs\">"
             }
             dict set yamldict css $css
         }
@@ -283,7 +283,7 @@ proc mkdoc::mkdoc {filename outfile args} {
                  }]
             } else {
                 set jscode ""
-                foreach js [string split $arg(--javascript) ","] {
+                foreach js [split $arg(--javascript) ","] {
                     append jscode "<script src=\"$js\"> </script>"
                 }
                dict set yamldict javascript $jscode
