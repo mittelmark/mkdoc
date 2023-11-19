@@ -20,7 +20,7 @@ app:
 	mkdir mkdoc.vfs/lib/yaml	
 	for file in $(cmdl-files); do wget $(tcllib)modules/cmdline/$${file} -O mkdoc.vfs/lib/cmdline/$${file}; done	
 	for file in $(yaml-files); do wget $(tcllib)modules/yaml/$${file} -O mkdoc.vfs/lib/yaml/$${file}; done	
-	for file in $(mdown-files); do wget $(tcllib)modules/markdown/$${file} -O mkdoc.vfs/lib/markdown/$${file}; done
+	for file in $(mdown-files); do cp tcllib/markdown/$${file} mkdoc.vfs/lib/markdown/$${file}; done
 	## fix bug for code in triple backtick section
 	perl -pe 's/set code_result \[html_escape +.code_result\]//' mkdoc.vfs/lib/markdown/markdown.tcl > temp.tcl
 	mv temp.tcl mkdoc.vfs/lib/markdown/markdown.tcl
