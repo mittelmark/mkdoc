@@ -14,8 +14,7 @@ version 0.9.0 it as well supports embedding LaTeX equations using the
 [MathJax Javascript library](https://www.mathjax.org/)
 
 * current code and manuals:  [mkdoc.zip](https://github.com/mittelmark/mkdoc/archive/refs/heads/main.zip)
-* Short Manual generated from doctools manpage (old version 0.7.0) [mkdoc.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc.html)
-* Long Manual generated from mkdoc.tcl directly (version 0.8.0) [mkdoc-mkdoc.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc-mkdoc.html)
+* Manual pagee (version 0.9.0) [mkdoc.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc.html)
 
 Here an example of an embedded mkdoc comment for a Python script:
 
