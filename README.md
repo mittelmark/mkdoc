@@ -1,5 +1,8 @@
 # mkdoc
 
+[![Release](https://img.shields.io/github/v/release/mittelmark/mkdoc.svg?label=current+release)](https://github.com/mittelmark/mkdoc/releases)
+[![license](https://img.shields.io/badge/license-BSD-lightgray.svg)](https://opensource.org/license/bsd)
+
 Source code documentation tool using embedded Markdown for programming
 languages supporting either multiline comments or at least the # character for comments.
 
