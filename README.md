@@ -9,7 +9,9 @@ languages supporting either multiline comments or at least the # character for c
 Can be as well  used to  convert  Markdown  code into HTML  optionally  adding
 header, footer, stylesheets and Javascript code. The latter can be used to add
 syntax   highlighting   for   instance   using   the  
-[Highlight.js syntax highlighter](https://github.com/highlightjs).
+[Highlight.js   syntax   highlighter](https://github.com/highlightjs).   Since
+version 0.9.0 it as well supports embedding LaTeX equations using the 
+[MathJax Javascript library](https://www.mathjax.org/)
 
 * current code and manuals:  [mkdoc.zip](https://github.com/mittelmark/mkdoc/archive/refs/heads/main.zip)
 * Short Manual generated from doctools manpage (old version 0.7.0) [mkdoc.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc.html)

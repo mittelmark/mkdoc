@@ -1,0 +1,88 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="title" content="Documentation equations">
+<meta name="author" content="NN">
+<title>Documentation equations</title>
+<style>
+body {
+    margin-left: 10%; margin-right: 10%;
+    font-family: Palatino, "Palatino Linotype", "Palatino LT STD", "Book Antiqua", Georgia, serif;
+    max-width: 90%;
+}
+pre {
+    font-family: Monaco, Consolas, "Liberation Mono", Menlo, Courier, monospace;
+}
+</style>
+    
+    
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+    
+
+<h1>Equations display demo</h1>
+
+<p>This    is   an    example    to    show    the   use   of   the    Javascript
+<a href="https://www.mathjax.org/">MathJax</a> library which can be used to display LaTeX
+math equations within Markdown documents.</p>
+
+<h2>Document creation</h2>
+
+<p>The Markdown file can be converted with Equation parsing like this:</p>
+
+<pre class='code'><code>mkdoc example.md example.html --mathjax true</code></pre>
+
+<h2>Inline Equations</h2>
+
+<p>Simple  Equations  can be  inline  within  the text  using  the two  backslash
+parenthesis syntax like here:</p>
+
+<pre class='code'><code>    The  famous  Einstein  equations  \\( E = mc^2 \\) is  probably  the most known
+    equation world wide.</code></pre>
+
+<p>The output is this:</p>
+
+<p>The  famous  Einstein  equations  \( E = mc^2 \) is  probably  the most known
+equation world wide.</p>
+
+<h2>Block Equations</h2>
+
+<p>Block  equations can be embedded within brackets  protected by two backslashes
+or within two starting and two ending dollar signs like in the examples below:</p>
+
+<pre class='code'><code>\\[ \sum_{i=0}^n i^2 =  \frac{(n^2+n)(2n+1)}{6} \tag{1} \\] </code></pre>
+
+<p>and here the output:</p>
+
+<p>\[ \sum_{i=0}^n i^2 =  \frac{(n^2+n)(2n+1)}{6} \tag{1} \]</p>
+
+<p>As you can see the  alignment  to the  center  does not  really  look nice. So
+there is style  command for the  division tag of class left which aligns the equation to the
+left which is probably  better to read. So you wrap your equation  within this
+div tag to make it left aligned:</p>
+
+<pre class='code'><code>&lt;div style=&quot;display: flex;&gt;
+
+$$\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \tag{2}$$
+
+&lt;/div&gt;</code></pre>
+
+<p>And here the output:</p>
+
+<div style="display: flex;">
+$$\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \tag{2}$$
+</div>
+
+<p>That probably looks better than a centered  equation with the numbering at the
+very end.</p>
+
+<p>You can as well create a div class left in your  stylesheet  to just write the
+classname in your div tag.</p>
+
+    
+    </body>
+    </html>
+

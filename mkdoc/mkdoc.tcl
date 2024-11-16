@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <231118.1047>
+#  Last Modified : <241116.1908>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -18,10 +18,11 @@
 #                  2022-04-XX Release 0.7 (minimal)
 #                  2023-09-07 Release 0.7.1 (img tag fix)
 #                  2023-11-18 Release 0.8.0 
+#                  2024-11-16 Release 0.9.0 Mathjax support
 #	
 ##############################################################################
 #
-# Copyright (c) 2019-2023  Dr. Detlef Groth, E-mail: detlef(at)dgroth(dot)de
+# Copyright (c) 2019-2024  Dr. Detlef Groth, E-mail: detlef(at)dgroth(dot)de
 # 
 # This library is free software; you can use, modify, and redistribute it for
 # any purpose, provided that existing copyright notices are retained in all
@@ -32,7 +33,7 @@
 #
 ##############################################################################
 #' ---
-#' title: mkdoc::mkdoc 0.8.0
+#' title: mkdoc::mkdoc 0.9.0
 #' author: Detlef Groth, Schwielowsee, Germany
 #' css: mkdoc.css
 #' ---
@@ -68,7 +69,7 @@
 #' ```
 #' package require mkdoc::mkdoc
 #' mkdoc::mkdoc inputfile outputfile ?--css file1.css,file2.css? ?--header header.html? ?--footer footer.html? \
-#'    ?--javascript highlightjs|file1.js,file2.js?
+#'    ?--javascript highlightjs|file1.js,file2.js? ?--mathjax true?
 #' ```
 #'
 #' Usage as command line application for extraction of Markdown comments prefixed with `#'`:
@@ -81,7 +82,7 @@
 #'
 #' ```
 #' mkdoc inputfile.md outputfile.html ?--css file.css,file2.css --header header.html \
-#'   --footer footer.html --javascript highlighjs|filename1,filename2?
+#'   --footer footer.html --javascript highlighjs|filename1,filename2  --mathjax true?
 #' ```
 #'
 #' ## <a name='description'>DESCRIPTION</a>
@@ -111,6 +112,7 @@
 #'   - *--css cssfile* if outfile is an HTML file use the given *cssfile*
 #'   - *--footer footer.html* if outfile is an HTML file add this footer before the closing body tag
 #'   - *--header header.html* if outfile is an HTML file add this header after  the opening body tag
+#'   - *--mathjax true|false* should there be the MathJax library included
 #'     
 #' > If the file extension of the outfile is either html or htm a HTML file is created. If the output
 #'   file has other file extension the documentation after _#'_ comments is simply extracted and stored
@@ -137,7 +139,7 @@ package require Tcl 8.6
 package require yaml
 package require Markdown
 
-package provide mkdoc 0.8.0
+package provide mkdoc 0.9.0
 
 namespace eval mkdoc {
     variable deindent [list \n\t \n "\n    " \n]
@@ -153,6 +155,7 @@ namespace eval mkdoc {
 	$style
         
         $document(javascript)
+        $document(mathjax)
 	</head>
 	<body>
         $document(header)
@@ -187,7 +190,7 @@ proc mkdoc::mkdoc {filename outfile args} {
     variable htmlstart
     variable mkdocstyle
 
-    array set arg [list --css "" --footer "" --header "" --javascript ""]
+    array set arg [list --css "" --footer "" --header "" --javascript "" --mathjax false]
     array set arg $args
     if {[file extension $filename] eq [file extension $outfile]} {
 	return -code error "Error: infile and outfile must have different file extensions!"
@@ -288,6 +291,11 @@ proc mkdoc::mkdoc {filename outfile args} {
                 }
                dict set yamldict javascript $jscode
             }
+        }
+        if {$arg(--mathjax)} {
+            set document(mathjax) {<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>}
+        } else {
+            set document(mathjax) ""
         }
         if {$arg(--header) ne ""} {
             if {[file exists $arg(--header)]} {
@@ -588,6 +596,45 @@ proc ::mkdoc::run {argv} {
 #' annotation tool. Don't overuse the possibilities of Markdown, sometimes less is more. 
 #' Write clear and concise, don't use fancy visual effects.
 #' 
+#' **Equations**
+#'
+#' Since version 0.9.0 as well LaTeX equations can be embedded into Markdown documents and are
+#' rendered using the [MathJax](https://www.mathjax.org/) library. Just include either inline 
+#' equations using parenthesis protected by two backslashes or block equations embedded within
+#' brackets protected by two backslashes or within two dollar symbols in your Markdown code and use
+#' the option `--mathjax true` during document conversion. Here an example for 
+#' inline equations:
+#'
+#' ```
+#' The  famous  Einstein  equation  \\( E = mc^2 \\) is  probably  the most known
+#' equation world wide.
+#' ```
+#' 
+#' And here the output:
+#' 
+#' The  famous  Einstein  equation  \\( E = mc^2 \\) is  probably  the most know
+#' equation world wide.
+#' 
+#' Block equations should be usually aligned left, like in the following examples:
+#'
+#'
+#' ```
+#' <div style="display: flex;">
+#' 
+#' $$ \sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \tag{1} $$
+#' 
+#' </div>
+#' ```
+#'
+#' And here the output:
+#' 
+#' <div style="display: flex;">
+#'
+#' $$ \sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \tag{1} $$
+#'
+#' </div>
+#'
+#'
 #' **Includes**
 #' 
 #' mkdoc in contrast to standard markdown as well support includes. Using the `#' #include "filename.md"` syntax 
@@ -661,6 +708,8 @@ proc ::mkdoc::run {argv} {
 #'        (issue is done on tcllib)
 #'      - adding example file in examples to show syntax highlighting
 #'      - adding Makefile to build standalone application using tpack (80kb)
+#' - 2024-11-16 Release 0.9.0
+#'      - support for mathjax
 #'
 #' ## <a name='todo'>TODO</a>
 #'
@@ -672,9 +721,9 @@ proc ::mkdoc::run {argv} {
 #'
 #' ## <a name='license'>LICENSE AND COPYRIGHT</a>
 #'
-#' Markdown extractor and converter mkdoc::mkdoc, version 0.8.0
+#' Markdown extractor and converter mkdoc::mkdoc, version 0.9.0
 #'
-#' Copyright (c) 2019-23  Detlef Groth, E-mail: <detlef(at)dgroth(dot)de>
+#' Copyright (c) 2019-24  Detlef Groth, E-mail: <detlef(at)dgroth(dot)de>
 #' 
 #' BSD License type:
 

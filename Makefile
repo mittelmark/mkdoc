@@ -6,6 +6,7 @@ cmdl-files=pkgIndex.tcl cmdline.tcl
 mdown-files=markdown.tcl pkgIndex.tcl
 txutl-files=tabify.tcl repeat.tcl pkgIndex.tcl
 tcllib=https://raw.githubusercontent.com/tcltk/tcllib/master/
+VERSION=$(shell grep "package ifneeded" mkdoc/pkgIndex.tcl | grep -Eo '[.0-9]{2,}')
 app:	
 	-rm -rf mkdoc.vfs
 	tpack init mkdoc.vfs
@@ -27,14 +28,17 @@ app:
 	
 	for file in $(txutl-files); do wget $(tcllib)modules/textutil/$${file} -O mkdoc.vfs/lib/textutil/$${file}; done	
 	tpack wrap mkdoc.tapp --lz4
-	cp mkdoc.tapp mkdoc-`tclsh mkdoc.tapp --version`.bin
-	ls -lth mkdoc*.bin
+	cp mkdoc.tapp bin/mkdoc-`tclsh mkdoc.tapp --version`.bin
+	ls -lth bin/mkdoc*.bin
 	echo done
 
 test-hightlight:
-	 ./mkdoc.tapp examples/test.md examples/test.html --javascript highlightjs
-
+	 tclsh ./bin/mkdoc-$(VERSION).bin examples/test.md examples/test.html --javascript highlightjs
+test-equations:
+	echo $(VERSION)
+	tclsh ./bin/mkdoc-$(VERSION).bin examples/equations.md examples/equations.html --mathjax true
+	echo done
 docu:
-	./mkdoc.tapp mkdoc/mkdoc.tcl mkdoc/mkdoc.html --css mini.css
+	tclsh ./bin/mkdoc-$(VERSION).bin mkdoc/mkdoc.tcl mkdoc/mkdoc.html --css mini.css --mathjax true
 	htmlark mkdoc/mkdoc.html -o mkdoc/mkdoc-out.html
 	mv mkdoc/mkdoc-out.html mkdoc/mkdoc.html
