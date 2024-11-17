@@ -89,7 +89,7 @@ An example using equation embedding can be seen here (seems not to work in previ
 ## Installation
 
 On Linux, MacOS and on Windows with installed Msys2 or Cyvwin download the latest
-[mkdoc-VERSION.bin](https://github.com/mittelmark/mkdoc/releases) binary, rename
+[mkdoc-VERSION.bin](https://github.com/mittelmark/mkdoc/releases) binary (90kb in size), rename
 it to mkdoc and copy the file to a folder belonging to your PATH variable. 
 Thereafter make the file executable and check that it is correctly installed like
 this:
