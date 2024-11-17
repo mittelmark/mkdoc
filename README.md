@@ -3,17 +3,24 @@
 [![Release](https://img.shields.io/github/v/release/mittelmark/mkdoc.svg?label=current+release)](https://github.com/mittelmark/mkdoc/releases)
 [![license](https://img.shields.io/badge/license-BSD-lightgray.svg)](https://opensource.org/license/bsd)
 
-Source code documentation tool using embedded Markdown for programming
+Markdown to HTML converter and source code documentation tool using embedded Markdown for programming
 languages supporting either multiline comments or at least the # character for comments.
 
-* standalone Tcl application for document conversion
-* Tcl library for programmers
+* Tcl application for document conversion from Markdown to HTML
+* Tcl application to extract Markdown documentation from source code tools
+* Tcl library for  programmers to accomplish both things above from within the
+  Tcl programming language
 
-Can be as well  used to  convert  Markdown  code into HTML  optionally  adding
+Mkdoc is part of the  [pantcl](https://github.com/mittelmark/pantcl)  document  processor
+which  supports  embedding  and  evaluating  other  documentation  tools  like
+[GraphViz](https://www.graphviz.org) or [PlantUML](https://www.plantuml.com) and programming  languages
+like Python, R or Octave and is  used  within  the  [pantcl4r](https/github.com/mittelmark/pantcl4r)  R
+package.
+
+The mkdoc package/application can be as well  used to  convert  Markdown  code into HTML  optionally  adding
 header, footer, stylesheets and Javascript code. The latter can be used to add
-syntax   highlighting   for   instance   using   the  
-[Highlight.js   syntax   highlighter](https://github.com/highlightjs).   Since
-version 0.9.0 it as well supports embedding LaTeX equations using the 
+syntax   highlighting   for   instance   using   the [Highlight.js syntax   highlighter](https://github.com/highlightjs).
+Since version 0.9.0 it as well supports embedding LaTeX equations using the
 [MathJax Javascript library](https://www.mathjax.org/)
 
 * current code and manuals:  [mkdoc.zip](https://github.com/mittelmark/mkdoc/archive/refs/heads/main.zip)
@@ -22,7 +29,7 @@ version 0.9.0 it as well supports embedding LaTeX equations using the
 Here an example of an embedded mkdoc comment for a Python script:
 
 ```python
-
+#!/usr/bin/env python3
 #' **hw()**
 #'  
 #' > Function prints "Hello World!" to the terminal!"
@@ -74,17 +81,31 @@ An example using syntax hilighting can be seen here (seems not to work in previe
 * [hilight.md](https://github.com/mittelmark/mkdoc/blob/master/examples/hilight.md)
 * [hilight.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/examples/hilight.html).
 
+An example using equation embedding can be seen here (seems not to work in preview mode):
+
+* [equations.md](https://github.com/mittelmark/mkdoc/blob/master/examples/equations.md)
+* [equations.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/examples/equations.html).
+
 ## Installation
 
-For the  binary  just  copy  the file  mkdoc-version.bin  as mkdoc to a folder
-belonging to your PATH, make the file executable.
+On Linux, MacOS and on Windows with installed Msys2 or Cyvwin download the latest
+[mkdoc-VERSION.bin](https://github.com/mittelmark/mkdoc/releases) binary, rename
+it to mkdoc and copy the file to a folder belonging to your PATH variable. 
+Thereafter make the file executable and check that it is correctly installed like
+this:
+
+```
+$ mkdoc --version
+0.9.0
+```
 
 ## Changes in Comparison to the Tcllib packages
 
-- fix for image tag
+- fix for image tag (as well now in Tcllib)
 - adding header and footer support
 - adding javascript (single and multiple file support)
-- adding code highlight support
+- adding code highlight support [highligthjs](https://highlightjs.org/)
+- adding equation support using [MathJax](https://www.mathjax.org/)
 - adding css support for multiple files
 - fix for library Markdown bugs in handling of code fences
 - adding standalone binary mkdoc.bin

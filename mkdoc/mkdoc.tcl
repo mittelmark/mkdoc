@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <241116.1908>
+#  Last Modified : <241117.0803>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -102,7 +102,7 @@
 #' ## <a name='command'>COMMAND</a>
 #'
 #'  <a name="mkdoc"> </a>
-#' **mkdoc::mkdoc** *infile outfile ?--css file.css --header header.html --footer footer.html?*
+#' **mkdoc::mkdoc** *infile outfile ?--css file.css --header header.html --footer footer.html --mathjax true? *
 #' 
 #' > Extracts the documentation in Markdown format from *infile* and writes the documentation 
 #'    to *outfile* either in Markdown, Doctools  or HTML format. 
@@ -112,6 +112,7 @@
 #'   - *--css cssfile* if outfile is an HTML file use the given *cssfile*
 #'   - *--footer footer.html* if outfile is an HTML file add this footer before the closing body tag
 #'   - *--header header.html* if outfile is an HTML file add this header after  the opening body tag
+#'   - *--javascript highlighjs|filename1,filename2* if outfile is an HTML file embeds either the hilightjs Javascript hilighter or the given local javascript filename(s) 
 #'   - *--mathjax true|false* should there be the MathJax library included
 #'     
 #' > If the file extension of the outfile is either html or htm a HTML file is created. If the output
