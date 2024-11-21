@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <241117.0857>
+#  Last Modified : <241121.0947>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -140,8 +140,8 @@ package require Tcl 8.6
 package require yaml
 package require Markdown
 
-package provide mkdoc 0.9.0
-package provide mkdoc::mkdoc 0.9.0
+package provide mkdoc 0.10.0
+package provide mkdoc::mkdoc 0.10.0
 
 namespace eval mkdoc {
     variable deindent [list \n\t \n "\n    " \n]
@@ -153,6 +153,7 @@ namespace eval mkdoc {
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<meta name="title" content="$document(title)">
 	<meta name="author" content="$document(author)">
+        $document(refresh)
 	<title>$document(title)</title>
 	$style
         
@@ -192,7 +193,8 @@ proc mkdoc::mkdoc {filename outfile args} {
     variable htmlstart
     variable mkdocstyle
 
-    array set arg [list --css "" --footer "" --header "" --javascript "" --mathjax false]
+    array set arg [list --css "" --footer "" --header "" --javascript "" \
+                   --mathjax false --refresh 0]
     array set arg $args
     if {[file extension $filename] eq [file extension $outfile]} {
 	return -code error "Error: infile and outfile must have different file extensions!"
@@ -299,6 +301,11 @@ proc mkdoc::mkdoc {filename outfile args} {
         } else {
             set document(mathjax) ""
         }
+        if {$arg(--refresh) > 9} {
+            set document(refresh) "<meta http-equiv=\"refresh\" content=\"$arg(--refresh)\" />"
+        } else {
+            set document(refresh) ""
+        }
         if {$arg(--header) ne ""} {
             if {[file exists $arg(--header)]} {
                 set infh [open $arg(--header) r]
@@ -329,7 +336,7 @@ proc mkdoc::mkdoc {filename outfile args} {
             }
             set html [Markdown::convert $mdhtml]
             ## issue in Markdown package?
-            set htm [string map {&amp;gt; &gt; &amp;quot; &quot;} $htm]  
+            set html [string map {&amp;lt; &lt;  &amp;gt; &gt; &amp;quot; &quot;} $html]  
             ## fixing curly brace issues in backtick code chunk
             set html [regsub -all "code class='\{" $html {code class='}] 
             set html [regsub -all "code class='(\[^'\]+)\}'" $html {code class='\1'}]             
@@ -714,6 +721,8 @@ proc ::mkdoc::run {argv} {
 #'      - adding Makefile to build standalone application using tpack (80kb)
 #' - 2024-11-16 Release 0.9.0
 #'      - support for mathjax
+#' - 2024-11-XX Release 0.10.0
+#'      - support for refresh option to autorefresh a HTML page 
 #'
 #' ## <a name='todo'>TODO</a>
 #'

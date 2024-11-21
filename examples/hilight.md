@@ -70,3 +70,22 @@ def test():
 
 test();
 ```
+
+
+And here an R example:
+
+```R
+test <- function () {
+    print("testig")
+
+test();
+```
+
+The same within curly braces:
+
+```{r}
+test2 <- function () {
+    print("testig2")
+
+test2();
+```

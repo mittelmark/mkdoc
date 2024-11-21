@@ -24,15 +24,16 @@ set Usage [string map [list "\n    " "\n"] {
 
     Optional arguments:
 
-        --help            - display this help page, and exit
-        --version         - display version number, and exit
-        --license         - display license information, and exit
-        --css CSSFILE     - use the specified CSSFILE instead of internal default 
-                            mkdoc.css
-        --header HTMLFILE - file with HTML code to be included after the body tag
-        --footer HTMLFILE - file with HTML code to be included before the closing
-                            body tag                            
-        --mathjax true    - Emebd the Mathjax Javascript library to add LaTeX formulas                    
+        --help             - display this help page, and exit
+        --version          - display version number, and exit
+        --license          - display license information, and exit
+        --css CSSFILE      - use the specified CSSFILE instead of internal default 
+                             mkdoc.css
+        --header HTMLFILE  - file with HTML code to be included after the body tag
+        --footer HTMLFILE  - file with HTML code to be included before the closing
+                             body tag                            
+        --javascript JSLIB - hightlightjs|file1,file2,...                     
+        --mathjax true     - Embed the Mathjax Javascript library to add LaTeX formulas                    
                             
     Examples:
 
@@ -51,6 +52,11 @@ set Usage [string map [list "\n    " "\n"] {
         
         # convert a Markdown file to HTML with own css, header and foot
         __APP__ sample.md sample.html --css my.css --footer foot.html --header head.html
+        
+        # convert a Markdown file to HTML parsing embedded Latex Formula
+        # using \\( inline formula \\) or \\[ block formula syntax \\]
+        
+        __APP__ sample.md sample.html --javascript highlightjs
         
         # convert a Markdown file to HTML parsing embedded Latex Formula
         # using \\( inline formula \\) or \\[ block formula syntax \\]
