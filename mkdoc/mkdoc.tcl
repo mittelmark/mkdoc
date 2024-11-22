@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <241122.1506>
+#  Last Modified : <241122.1507>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -361,10 +361,8 @@ proc mkdoc::mkdoc {filename outfile args} {
                 }
             }
             if {![dict exists $yamldict date]} {
-                dict set yamldict date [clock format [clock seconds]]
+                dict set yamldict date [clock format [clock seconds] format "%Y-%m-%d"]
             } 
-            puts [clock format [dict get $yamldict date]]
-            puts $document(date)
             set header [subst -nobackslashes -nocommands $header]
             puts $out $header
             if {$hasyaml} {
