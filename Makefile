@@ -39,12 +39,12 @@ test-equations:
 	tclsh ./bin/mkdoc-$(VERSION).bin examples/equations.md examples/equations.html --mathjax true
 	echo done
 docu:
-	tclsh ./bin/mkdoc-$(VERSION).bin mkdoc/mkdoc.tcl mkdoc/mkdoc.html --css mini.css --mathjax true
-	htmlark mkdoc/mkdoc.html -o mkdoc/mkdoc-out.html
-	mv mkdoc/mkdoc-out.html mkdoc/mkdoc.html
+	TCLLIBPATH=`pwd` tclsh apps/mkdoc mkdoc/mkdoc.tcl mkdoc/mkdoc.html --css mini.css --mathjax true --javascript highlightjs
+	htmlark --ignore-js mkdoc/mkdoc.html -o mkdoc/mkdoc-out.html
+	cp mkdoc/mkdoc-out.html mkdoc/mkdoc.html
 tests:
 	@echo "Running tests..."
 	@TCLLIBPATH=`pwd` tclsh apps/mkdoc examples/hilight.md examples/hilight.html --javascript highlightjs && grep -q "highlight.min.js" examples/hilight.html || (echo "Error: Expected highlightjs output not found"; exit 1) && echo "  ... highlight passing"
-	@TCLLIBPATH=`pwd` tclsh apps/mkdoc examples/hilight.md examples/hilight.html --refresh 10 && grep -qE "http-equiv=.refresh.+10" examples/hilight.html || (echo "Error: Expected refresh output not found"; exit 1) && echo "  ... refresh passing"	
+	@TCLLIBPATH=`pwd` tclsh apps/mkdoc examples/hilight.md examples/hilight-refresh.html --refresh 10 && grep -qE "http-equiv=.refresh.+10" examples/hilight-refresh.html || (echo "Error: Expected refresh output not found"; exit 1) && echo "  ... refresh passing"	
 	@echo "Tests passed successfully!"
 	
