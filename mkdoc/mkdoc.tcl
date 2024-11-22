@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <241122.1511>
+#  Last Modified : <241122.1644>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -170,10 +170,10 @@ namespace eval mkdoc {
         $document(header)
     }]
     variable footer [string map $deindent {
-        $document(footer)
-        </body>
-        </html>
-    }]
+    $document(footer)
+</body>
+</html>
+}]
     variable htmlstart [string map $deindent {
 	<h1 class="title">$document(title)</h1>
 	<h2 class="author">$document(author)</h2>
@@ -355,7 +355,11 @@ proc mkdoc::mkdoc {filename outfile args} {
             set out [open $outfile w 0644]
             foreach key [dict keys $yamldict] {
                 if {$key == "date"} {
-                    set document($key) [clock format [dict get $yamldict $key] -format "%Y-%m-%d"]
+                    if {[string is integer [dict get $yamldict $key]]} {
+                        set document($key) [clock format [dict get $yamldict $key] -format "%Y-%m-%d"]
+                    } else {
+                        set document($key) [clock format [clock scan [dict get $yamldict $key]] -format "%Y-%m-%d"]
+                    }
                 } else {
                     set document($key) [dict get $yamldict $key]
                 }
@@ -390,9 +394,9 @@ proc mkdoc::mkdoc {filename outfile args} {
 #' Here just the most basic essentials  to create documentation are described.
 #' Please note, that formatting blocks in Markdown are separated by an empty line, and empty line in this documenting mode is a line prefixed with the `#'` and nothing thereafter. 
 #'
-#' **Title and Author**
+#' **Title, Author and Date**
 #' 
-#' Title and author can be set at the beginning of the documentation in a so called YAML header. 
+#' Title, author and date can be set at the beginning of the documentation in a so called YAML header. 
 #' This header will be as well used by the document converter [pandoc](https://pandoc.org)  to handle various options for later processing if you extract not HTML but Markdown code from your documentation.
 #'
 #' A YAML header starts and ends with three hyphens. Here is the YAML header of this document:
@@ -702,6 +706,7 @@ proc mkdoc::mkdoc {filename outfile args} {
 #'      - support for refresh option to autorefresh a HTML page 
 #'      - removed run support, use pantcl instead
 #'      - fixing issues with greater, lower and quote signs in code fragments
+#'      - removing inlining external javascript files into HTML output
 #'
 #' ## <a name='todo'>TODO</a>
 #'
@@ -713,7 +718,7 @@ proc mkdoc::mkdoc {filename outfile args} {
 #'
 #' ## <a name='license'>LICENSE AND COPYRIGHT</a>
 #'
-#' Markdown extractor and converter mkdoc::mkdoc, version 0.9.0
+#' Markdown extractor and converter mkdoc::mkdoc, version 0.10.0
 #'
 #' Copyright (c) 2019-24  Detlef Groth, E-mail: <detlef(at)dgroth(dot)de>
 #' 
