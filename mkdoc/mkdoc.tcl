@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <241122.1439>
+#  Last Modified : <241122.1505>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -384,67 +384,6 @@ proc mkdoc::mkdoc {filename outfile args} {
             close $out
         }
 
-    }
-}
-
-#' 
-#' <a name="run"> </a>
-#' **mkdoc::run** *infile* 
-#' 
-#' > Source the code in infile and runs the examples in the documentation section
-#'    written with Markdown documentation. Below follows an example section which can be
-#'    run with `tclsh mkdoc.tcl mkdoc.tcl --run`
-#' 
-#' ## <a name="example">EXAMPLE</a>
-#' 
-#' ```
-#' puts {Hello mkdoc package}
-#' puts {I am in the example section}
-#' ```
-#' 
-proc ::mkdoc::run {argv} {
-    set filename [lindex $argv 0]
-    if {[llength $argv] == 3} {
-        set t [lindex $argv 2]
-    } else {
-        set t 1
-    }
-    source $filename
-    set extext ""
-    set example false
-    set excode false
-    if [catch {
-	open $filename r
-    } infh] {
-	return -code error "Cannot open $filename: $infh"
-    } else {
-	while {[gets $infh line] >= 0} {
-	    # Process line
-	    if {$extext eq "" && \
-		    [regexp -nocase {^\s*#'\s+#{2,3}\s.+Example} $line]} {
-                set example true
-            } elseif {$extext ne "" && \
-			  [regexp -nocase "^\\s*#'.*\\s# demo: $extext" $line]} {
-                set excode true
-            } elseif {$example && [regexp {^\s*#'\s+>?\s*```} $line]} {
-                set example false
-                set excode true
-            } elseif {$excode && [regexp {^\s*#'\s+>?\s*```} $line]} {
-                namespace eval :: $code
-                break
-                # eval code
-            } elseif {$excode && [regexp {^\s*#'\s(.+)} $line -> c]} {
-                append code "$c\n"
-            }
-        }
-        close $infh
-        if {$t > -1} {
-            catch {
-                update idletasks
-                after [expr {$t*1000}]
-                destroy .
-            }
-        }
     }
 }
 
