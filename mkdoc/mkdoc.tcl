@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <241122.1508>
+#  Last Modified : <241122.1511>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -701,6 +701,7 @@ proc mkdoc::mkdoc {filename outfile args} {
 #' - 2024-11-XX Release 0.10.0
 #'      - support for refresh option to autorefresh a HTML page 
 #'      - removed run support, use pantcl instead
+#'      - fixing issues with greater, lower and quote signs in code fragments
 #'
 #' ## <a name='todo'>TODO</a>
 #'
