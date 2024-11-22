@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <241122.1505>
+#  Last Modified : <241122.1506>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -53,8 +53,6 @@
 #'  - [SYNOPSIS](#synopsis)
 #'  - [DESCRIPTION](#description)
 #'  - [COMMAND](#command)
-#'      - [mkdoc::mkdoc](#mkdoc)
-#'      - [mkdoc::run](#run)
 #'  - [EXAMPLE](#example)
 #'  - [FORMATTING](#format)
 #'     - [Code Blocks](#code-blocks)
@@ -704,7 +702,8 @@ proc mkdoc::mkdoc {filename outfile args} {
 #'      - support for mathjax
 #' - 2024-11-XX Release 0.10.0
 #'      - support for refresh option to autorefresh a HTML page 
-#'
+#'      - removed run support, use pantcl instead
+
 #' ## <a name='todo'>TODO</a>
 #'
 #' - dtplite support ?
