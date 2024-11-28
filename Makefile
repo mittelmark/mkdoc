@@ -40,8 +40,8 @@ test-equations:
 	echo done
 docu:
 	TCLLIBPATH=`pwd` tclsh apps/mkdoc mkdoc/mkdoc.tcl mkdoc/mkdoc.html --css mini.css --mathjax true --javascript highlightjs
-	htmlark --ignore-js mkdoc/mkdoc.html -o mkdoc/mkdoc-out.html
-	cp mkdoc/mkdoc-out.html mkdoc/mkdoc.html
+	#htmlark --ignore-js mkdoc/mkdoc.html -o mkdoc/mkdoc-out.html
+	#cp mkdoc/mkdoc-out.html mkdoc/mkdoc.html
 tests:
 	@echo "Running tests..."
 	@TCLLIBPATH=`pwd` tclsh apps/mkdoc examples/hilight.md examples/hilight.html --javascript highlightjs && grep -q "highlight.min.js" examples/hilight.html || (echo "Error: Expected highlightjs output not found"; exit 1) && echo "  ... highlight passing"

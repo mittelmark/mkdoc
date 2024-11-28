@@ -1,32 +1,50 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<meta content="mkdoc::mkdoc 0.10.0" name="title"/>
-<meta content="Detlef Groth, Schwielowsee, Germany" name="author"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="title" content="mkdoc::mkdoc 0.10.0">
+<meta name="author" content="Detlef Groth, Schwielowsee, Germany">
+    
 <title>mkdoc::mkdoc 0.10.0</title>
-<link href="data:text/css; charset=utf-8;base64,cHJlIGNvZGUuaGxqc3tkaXNwbGF5OmJsb2NrO292ZXJmbG93LXg6YXV0bztwYWRkaW5nOjFlbX1jb2RlLmhsanN7cGFkZGluZzozcHggNXB4fS5obGpze2NvbG9yOiMzODNhNDI7YmFja2dyb3VuZDojZmFmYWZhfS5obGpzLWNvbW1lbnQsLmhsanMtcXVvdGV7Y29sb3I6I2EwYTFhNztmb250LXN0eWxlOml0YWxpY30uaGxqcy1kb2N0YWcsLmhsanMtZm9ybXVsYSwuaGxqcy1rZXl3b3Jke2NvbG9yOiNhNjI2YTR9LmhsanMtZGVsZXRpb24sLmhsanMtbmFtZSwuaGxqcy1zZWN0aW9uLC5obGpzLXNlbGVjdG9yLXRhZywuaGxqcy1zdWJzdHtjb2xvcjojZTQ1NjQ5fS5obGpzLWxpdGVyYWx7Y29sb3I6IzAxODRiYn0uaGxqcy1hZGRpdGlvbiwuaGxqcy1hdHRyaWJ1dGUsLmhsanMtbWV0YSAuaGxqcy1zdHJpbmcsLmhsanMtcmVnZXhwLC5obGpzLXN0cmluZ3tjb2xvcjojNTBhMTRmfS5obGpzLWF0dHIsLmhsanMtbnVtYmVyLC5obGpzLXNlbGVjdG9yLWF0dHIsLmhsanMtc2VsZWN0b3ItY2xhc3MsLmhsanMtc2VsZWN0b3ItcHNldWRvLC5obGpzLXRlbXBsYXRlLXZhcmlhYmxlLC5obGpzLXR5cGUsLmhsanMtdmFyaWFibGV7Y29sb3I6Izk4NjgwMX0uaGxqcy1idWxsZXQsLmhsanMtbGluaywuaGxqcy1tZXRhLC5obGpzLXNlbGVjdG9yLWlkLC5obGpzLXN5bWJvbCwuaGxqcy10aXRsZXtjb2xvcjojNDA3OGYyfS5obGpzLWJ1aWx0X2luLC5obGpzLWNsYXNzIC5obGpzLXRpdGxlLC5obGpzLXRpdGxlLmNsYXNzX3tjb2xvcjojYzE4NDAxfS5obGpzLWVtcGhhc2lze2ZvbnQtc3R5bGU6aXRhbGljfS5obGpzLXN0cm9uZ3tmb250LXdlaWdodDo3MDB9LmhsanMtbGlua3t0ZXh0LWRlY29yYXRpb246dW5kZXJsaW5lfQ==" rel="stylesheet"/><!--URL:https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css-->
-<script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
-<!-- tcl must be loaded extra -->
-<script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/languages/tcl.min.js"></script>
-<!-- Initialize highlight.js -->
-<script>hljs.highlightAll();</script>
-<script async="" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-<link href="data:text/css,%20%20%20%20html%20%7B%0A%20%20%20%20%20%20%20%20overflow-y%3A%20scroll%3B%0A%20%20%20%20%7D%0A%20%20%20%20body%20%7B%0A%20%20%20%20%20%20%20%20font-family%3A%20Georgia%2C%20Palatino%2C%20%27Palatino%20Linotype%27%2C%20Times%2C%20%27Times%20New%20Roman%27%2C%20serif%3B%0A%20%20%20%20%20%20%20%20line-height%3A%201.2%3B%0A%20%20%20%20%20%20%20%20padding%3A%201em%3B%0A%20%20%20%20%20%20%20%20margin%3A%20auto%3B%0A%20%20%20%20%20%20%20%20max-width%3A%20%201000px%3B%0A%20%20%20%20%7D%0A%20%20%20%20h2.author%2C%20h2.date%20%7B%20text-align%3A%20center%20%7D%0A%20%20%20%20a%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%230645ad%3B%0A%20%20%20%20%20%20%20%20text-decoration%3A%20none%3B%0A%20%20%20%20%7D%0A%20%20%20%20a%3Avisited%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%230b0080%3B%0A%20%20%20%20%7D%0A%20%20%20%20a%3Ahover%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%2306e%3B%0A%20%20%20%20%7D%0A%20%20%20%20a%3Aactive%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23faa700%3B%0A%20%20%20%20%7D%0A%20%20%20%20a%3Afocus%20%7B%0A%20%20%20%20%20%20%20%20outline%3A%20thin%20dotted%3B%0A%20%20%20%20%7D%0A%20%20%20%20p%20%7B%0A%20%20%20%20%20%20%20%20margin%3A%200.5em%200%3B%0A%20%20%20%20%7D%0A%20%20%20%20p.date%20%7B%0A%20%20%20%20%20%20%20%20text-align%3A%20center%3B%0A%20%20%20%20%7D%0A%20%20%20%20img%20%7B%0A%20%20%20%20%20%20%20%20max-width%3A%20100%25%3B%0A%20%20%20%20%7D%0A%20%20%20%20%0A%20%20%20%20h1%2C%20h2%2C%20h3%2C%20h4%2C%20h5%2C%20h6%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23111%3B%0A%20%20%20%20%20%20%20%20line-height%3A%20115%25%3B%0A%20%20%20%20%20%20%20%20margin-top%3A%201em%3B%0A%20%20%20%20%20%20%20%20font-weight%3A%20normal%3B%0A%20%20%20%20%7D%0A%20%20%20%20h1%20%7B%0A%20%20%20%20%20%20%20%20text-align%3A%20center%3B%0A%20%20%20%20%20%20%20%20font-size%3A%20120%25%3B%0A%20%20%20%20%7D%0A%20%20%20%20p.author%2C%20p.date%20%7B%0A%20%20%20%20%20%20%20%20font-size%3A%20110%25%3B%0A%20%20%20%20%7D%0A%20%20%20%20%0A%20%20%20%20pre%2C%20blockquote%20pre%20%7B%0A%20%20%20%20%20%20%20%20border-top%3A%200.1em%20%239ac%20solid%3B%0A%20%20%20%20%20%20%20%20background%3A%20%23e9f6ff%3B%2A/%0A%20%20%20%20%20%20%20%20padding%3A%2030px%3B%0A%20%20%20%20%20%20%20%20border-bottom%3A%200.1em%20%239ac%20solid%3B%0A%20%20%20%20%7D%0A%20%20%20%20%0A%20%20%20%20blockquote%20%7B%0A%20%20%20%20%20%20%20%20margin%3A%200%3B%0A%20%20%20%20%20%20%20%20padding-left%3A%203em%3B%20%0A%20%20%20%20%7D%0A%20%20%20%20%0A%20%20%20%20hr%20%7B%0A%20%20%20%20%20%20%20%20display%3A%20block%3B%0A%20%20%20%20%20%20%20%20height%3A%202px%3B%0A%20%20%20%20%20%20%20%20border%3A%200%3B%0A%20%20%20%20%20%20%20%20border-top%3A%201px%20solid%20%23aaa%3B%0A%20%20%20%20%20%20%20%20border-bottom%3A%201px%20solid%20%23eee%3B%0A%20%20%20%20%20%20%20%20margin%3A%201em%200%3B%0A%20%20%20%20%20%20%20%20padding%3A%2010px%3B%0A%20%20%20%20%7D%0A%20%20%20%20%0A%20%20%20%20pre%2C%20code%2C%20kbd%2C%20samp%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23000%3B%0A%20%20%20%20%20%20%20%20font-family%3A%20Monaco%2C%20%27courier%20new%27%2C%20monospace%3B%0A%20%20%20%20%20%20%20%20font-size%3A%2090%25%3B%20%0A%20%20%20%20%7D%0A%20%20%20%20code.r%20%7B%0A%20%20%20%20%20%20%20%20color%3A%20%23770000%3B%0A%20%20%20%20%7D%0A%20%20%20%20pre%20%7B%0A%20%20%20%20%20%20%20%20white-space%3A%20pre%3B%0A%20%20%20%20%20%20%20%20white-space%3A%20pre-wrap%3B%0A%20%20%20%20%20%20%20%20word-wrap%3A%20break-word%3B%0A%20%20%20%20%7D%0A%20%20%20%20/%2A%20fix%2C%20do%20not%20like%20bold%20for%20every%20keyword%20%2A/%0A%20%20%20%20code%20span.kw%20%7B%20color%3A%20%23007020%3B%20font-weight%3A%20normal%3B%20%7D%20/%2A%20Keyword%20%2A/%0A%20%20%20%20%20pre.sourceCode%2C%20pre.cmd%20%7B%0A%20%20%20%20%20%20%20%20background%3A%20%23fff6f6%3B%0A%20%20%20%20%7D%0A%20%20%20%20pre.cmdout%20%7B%0A%20%20%20%20%20%20%20%20background%3A%20%23fffff6%3B%0A%20%20%20%20%7D%0A%20%20%20%20figure%2C%20p.author%20%7B%0A%20%20%20%20%20%20%20%20text-align%3A%20center%3B%0A%20%20%20%20%7D%0A%20%20%20%20table%20%7B%20%20%20%20%0A%20%20%20%20%20%20%20%20border-collapse%3A%20collapse%3B%0A%20%20%20%20%20%20%20%20border-bottom%3A%202px%20solid%3B%0A%20%20%20%20%20%20%20%20border-spacing%3A%205px%3B%0A%20%20%20%20%20%20%20%20min-width%3A%20400px%3B%0A%20%20%20%20%7D%0A%20%20%20%20table%20thead%20tr%20th%20%7B%20%0A%20%20%20%20%20%20%20%20background-color%3A%20%23fde9d9%3B%0A%20%20%20%20%20%20%20%20text-align%3A%20left%3B%20%0A%20%20%20%20%20%20%20%20padding%3A%200px%3B%0A%20%20%20%20%20%20%20%20border-top%3A%202px%20solid%3B%0A%20%20%20%20%20%20%20%20border-bottom%3A%202px%20solid%3B%0A%20%20%20%20%7D%0A%20%20%20%20table%20td%20%7B%20%0A%20%20%20%20%20%20%20%20background-color%3A%20%23fff9e9%3B%0A%0A%20%20%20%20%20%20%20%20text-align%3A%20left%3B%20%0A%20%20%20%20%20%20%20%20padding%3A%2010px%3B%0A%20%20%20%20%7D%0A%20%20%20%20pre%20%7B%20%0A%20%20%20%20%20%20%20%20margin%3A%2020px%3B%20%0A%20%20%20%20%20%20%20%20padding-top%3A%2010px%3B%0A%20%20%20%20%20%20%20%20padding-bottom%3A%2010px%3B%0A%20%20%20%20%20%20%20%20padding-left%3A%2010px%3B%0A%20%20%20%20%20%20%20%20padding-right%3A%2010px%3B%0A%20%20%20%20%7D%0A" rel="stylesheet"/><!--URL:mini.css-->
+    
+            <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">            <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">
+            <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+            <!-- tcl must be loaded extra -->
+            <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/languages/tcl.min.js"></script>
+            <!-- Initialize highlight.js -->
+            <script>hljs.highlightAll();</script>
+           
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
 <style>
+@import url("data:text/css;base64,ICAgIGh0bWwgewogICAgICAgIG92ZXJmbG93LXk6IHNjcm9sbDsKICAgIH0KICAgIGJvZHkgewogICAgICAgIGZvbnQtZmFtaWx5OiBHZW9yZ2lhLCBQYWxhdGlubywgJ1BhbGF0aW5vIExpbm90eXBlJywgVGltZXMsICdUaW1lcyBOZXcgUm9tYW4nLCBzZXJpZjsKICAgICAgICBsaW5lLWhlaWdodDogMS4yOwogICAgICAgIHBhZGRpbmc6IDFlbTsKICAgICAgICBtYXJnaW46IGF1dG87CiAgICAgICAgbWF4LXdpZHRoOiAgMTAwMHB4OwogICAgfQogICAgaDIuYXV0aG9yLCBoMi5kYXRlIHsgdGV4dC1hbGlnbjogY2VudGVyIH0KICAgIGEgewogICAgICAgIGNvbG9yOiAjMDY0NWFkOwogICAgICAgIHRleHQtZGVjb3JhdGlvbjogbm9uZTsKICAgIH0KICAgIGE6dmlzaXRlZCB7CiAgICAgICAgY29sb3I6ICMwYjAwODA7CiAgICB9CiAgICBhOmhvdmVyIHsKICAgICAgICBjb2xvcjogIzA2ZTsKICAgIH0KICAgIGE6YWN0aXZlIHsKICAgICAgICBjb2xvcjogI2ZhYTcwMDsKICAgIH0KICAgIGE6Zm9jdXMgewogICAgICAgIG91dGxpbmU6IHRoaW4gZG90dGVkOwogICAgfQogICAgcCB7CiAgICAgICAgbWFyZ2luOiAwLjVlbSAwOwogICAgfQogICAgcC5kYXRlIHsKICAgICAgICB0ZXh0LWFsaWduOiBjZW50ZXI7CiAgICB9CiAgICBpbWcgewogICAgICAgIG1heC13aWR0aDogMTAwJTsKICAgIH0KICAgIAogICAgaDEsIGgyLCBoMywgaDQsIGg1LCBoNiB7CiAgICAgICAgY29sb3I6ICMxMTE7CiAgICAgICAgbGluZS1oZWlnaHQ6IDExNSU7CiAgICAgICAgbWFyZ2luLXRvcDogMWVtOwogICAgICAgIGZvbnQtd2VpZ2h0OiBub3JtYWw7CiAgICB9CiAgICBoMSB7CiAgICAgICAgdGV4dC1hbGlnbjogY2VudGVyOwogICAgICAgIGZvbnQtc2l6ZTogMTIwJTsKICAgIH0KICAgIHAuYXV0aG9yLCBwLmRhdGUgewogICAgICAgIGZvbnQtc2l6ZTogMTEwJTsKICAgIH0KICAgIAogICAgcHJlLCBibG9ja3F1b3RlIHByZSB7CiAgICAgICAgYm9yZGVyLXRvcDogMC4xZW0gIzlhYyBzb2xpZDsKICAgICAgICBiYWNrZ3JvdW5kOiAjZTlmNmZmOyovCiAgICAgICAgcGFkZGluZzogMzBweDsKICAgICAgICBib3JkZXItYm90dG9tOiAwLjFlbSAjOWFjIHNvbGlkOwogICAgfQogICAgCiAgICBibG9ja3F1b3RlIHsKICAgICAgICBtYXJnaW46IDA7CiAgICAgICAgcGFkZGluZy1sZWZ0OiAzZW07IAogICAgfQogICAgCiAgICBociB7CiAgICAgICAgZGlzcGxheTogYmxvY2s7CiAgICAgICAgaGVpZ2h0OiAycHg7CiAgICAgICAgYm9yZGVyOiAwOwogICAgICAgIGJvcmRlci10b3A6IDFweCBzb2xpZCAjYWFhOwogICAgICAgIGJvcmRlci1ib3R0b206IDFweCBzb2xpZCAjZWVlOwogICAgICAgIG1hcmdpbjogMWVtIDA7CiAgICAgICAgcGFkZGluZzogMTBweDsKICAgIH0KICAgIAogICAgcHJlLCBjb2RlLCBrYmQsIHNhbXAgewogICAgICAgIGNvbG9yOiAjMDAwOwogICAgICAgIGZvbnQtZmFtaWx5OiBNb25hY28sICdjb3VyaWVyIG5ldycsIG1vbm9zcGFjZTsKICAgICAgICBmb250LXNpemU6IDkwJTsgCiAgICB9CiAgICBjb2RlLnIgewogICAgICAgIGNvbG9yOiAjNzcwMDAwOwogICAgfQogICAgcHJlIHsKICAgICAgICB3aGl0ZS1zcGFjZTogcHJlOwogICAgICAgIHdoaXRlLXNwYWNlOiBwcmUtd3JhcDsKICAgICAgICB3b3JkLXdyYXA6IGJyZWFrLXdvcmQ7CiAgICB9CiAgICAvKiBmaXgsIGRvIG5vdCBsaWtlIGJvbGQgZm9yIGV2ZXJ5IGtleXdvcmQgKi8KICAgIGNvZGUgc3Bhbi5rdyB7IGNvbG9yOiAjMDA3MDIwOyBmb250LXdlaWdodDogbm9ybWFsOyB9IC8qIEtleXdvcmQgKi8KICAgICBwcmUuc291cmNlQ29kZSwgcHJlLmNtZCB7CiAgICAgICAgYmFja2dyb3VuZDogI2ZmZjZmNjsKICAgIH0KICAgIHByZS5jbWRvdXQgewogICAgICAgIGJhY2tncm91bmQ6ICNmZmZmZjY7CiAgICB9CiAgICBmaWd1cmUsIHAuYXV0aG9yIHsKICAgICAgICB0ZXh0LWFsaWduOiBjZW50ZXI7CiAgICB9CiAgICB0YWJsZSB7ICAgIAogICAgICAgIGJvcmRlci1jb2xsYXBzZTogY29sbGFwc2U7CiAgICAgICAgYm9yZGVyLWJvdHRvbTogMnB4IHNvbGlkOwogICAgICAgIGJvcmRlci1zcGFjaW5nOiA1cHg7CiAgICAgICAgbWluLXdpZHRoOiA0MDBweDsKICAgIH0KICAgIHRhYmxlIHRoZWFkIHRyIHRoIHsgCiAgICAgICAgYmFja2dyb3VuZC1jb2xvcjogI2ZkZTlkOTsKICAgICAgICB0ZXh0LWFsaWduOiBsZWZ0OyAKICAgICAgICBwYWRkaW5nOiAwcHg7CiAgICAgICAgYm9yZGVyLXRvcDogMnB4IHNvbGlkOwogICAgICAgIGJvcmRlci1ib3R0b206IDJweCBzb2xpZDsKICAgIH0KICAgIHRhYmxlIHRkIHsgCiAgICAgICAgYmFja2dyb3VuZC1jb2xvcjogI2ZmZjllOTsKCiAgICAgICAgdGV4dC1hbGlnbjogbGVmdDsgCiAgICAgICAgcGFkZGluZzogMTBweDsKICAgIH0KICAgIHByZSB7IAogICAgICAgIG1hcmdpbjogMjBweDsgCiAgICAgICAgcGFkZGluZy10b3A6IDEwcHg7CiAgICAgICAgcGFkZGluZy1ib3R0b206IDEwcHg7CiAgICAgICAgcGFkZGluZy1sZWZ0OiAxMHB4OwogICAgICAgIHBhZGRpbmctcmlnaHQ6IDEwcHg7CiAgICB9Cg==");
+</style>
+
+    <style>
                pre, blockquote pre { background: #fafafa !important; }
                </style>
+               
 </head>
 <body>
+    
+
+
+
 <h1 class="title">mkdoc::mkdoc 0.10.0</h1>
 <h2 class="author">Detlef Groth, Schwielowsee, Germany</h2>
 <h2 class="date">2024-11-22</h2>
-<p></p><center> Manual: <a href="mkdoc.html">short (doctools)</a> - <a href="mkdoc-mkdoc.html">long (mkdoc)</a> </center>
+
+<p><center> Manual: <a href="mkdoc.html">short (doctools)</a> - <a href="mkdoc-mkdoc.html">long (mkdoc)</a> </center></p>
+
 <h2>NAME</h2>
+
 <p><strong>mkdoc::mkdoc</strong>  - Tcl package and command line application to extract and format 
 embedded programming documentation from source code files written in Markdown or
 doctools format and optionally converting it into HTML.</p>
-<h2><a name="toc"></a>TABLE OF CONTENTS</h2>
+
+<h2><a name='toc'></a>TABLE OF CONTENTS</h2>
+
 <ul>
 <li><a href="#synopsis">SYNOPSIS</a></li>
 <li><a href="#description">DESCRIPTION</a></li>
@@ -36,6 +54,7 @@ doctools format and optionally converting it into HTML.</p>
 <ul>
 <li><a href="#code-blocks">Code Blocks</a></li>
 <li><a href="#equations">Equations</a></li></ul>
+
 </li>
 <li><a href="#install">INSTALLATION</a></li>
 <li><a href="#see">SEE ALSO</a></li>
@@ -44,18 +63,28 @@ doctools format and optionally converting it into HTML.</p>
 <li><a href="#authors">AUTHOR</a></li>
 <li><a href="#license">LICENSE AND COPYRIGHT</a>
 </li></ul>
-<h2><a name="synopsis">SYNOPSIS</a></h2>
+
+<h2><a name='synopsis'>SYNOPSIS</a></h2>
+
 <p>Usage as package:</p>
-<pre class="code"><code>package require mkdoc::mkdoc
+
+<pre class='code'><code>package require mkdoc::mkdoc
 mkdoc::mkdoc inputfile outputfile ?--css file1.css,file2.css? \
+   ?--header header.html? ?--footer footer.html? \
    ?--javascript highlightjs|file1.js,file2.js? ?--mathjax true? ?--refresh 10?</code></pre>
+
 <p>Usage as command line application for extraction of Markdown comments prefixed with <code>#'</code>:</p>
-<pre class="code"><code>mkdoc inputcodefile outputfile.md ?options?</code></pre>
+
+<pre class='code'><code>mkdoc inputcodefile outputfile.md ?options?</code></pre>
+
 <p>Usage as command line application for conversion of Markdown to HTML:</p>
-<pre class="code"><code>mkdoc inputfile.md outputfile.html ?--css file.css,file2.css --header header.html \
+
+<pre class='code'><code>mkdoc inputfile.md outputfile.html ?--css file.css,file2.css --header header.html \
   --footer footer.html --javascript highlighjs|filename1,filename2  --mathjax true \
   --refresh 10?</code></pre>
-<h2><a name="description">DESCRIPTION</a></h2>
+
+<h2><a name='description'>DESCRIPTION</a></h2>
+
 <p><strong>mkdoc::mkdoc</strong>  extracts embedded Markdown or doctools documentation from source code files
 and  as well converts Markdown the output to HTML if desired.
 The documentation inside the source code must be prefixed with the <code>#'</code> character sequence.
@@ -64,14 +93,19 @@ File extensions can bei either <code>.md</code> for Markdown output, <code>.man<
 The latter requires the tcllib Markdown or the doctools extensions to be installed.
 If the file extension of the inputfile is <em>.md</em> and file extension of the output files is <em>.html</em> 
 there will be simply a conversion from a Markdown to a HTML file.</p>
+
 <p>The file <code>mkdoc.tcl</code> can be as well directly used as a console application. 
 An explanation on how to do this, is given in the section <a href="#install">Installation</a>.</p>
-<h2><a name="command">COMMAND</a></h2>
+
+<h2><a name='command'>COMMAND</a></h2>
+
 <p><a name="mkdoc"> </a>
 <strong>mkdoc::mkdoc</strong> <em>infile outfile ?--css file.css --header header.html --footer footer.html --mathjax true --refresh 10? </em></p>
+
 <blockquote>
 <p>Extracts the documentation in Markdown format from <em>infile</em> and writes the documentation 
    to <em>outfile</em> either in Markdown, Doctools  or HTML format.</p>
+
 <ul>
 <li><em>infile</em> - file with embedded markdown documentation</li>
 <li><em>outfile</em> -  name of output file extension</li>
@@ -82,6 +116,7 @@ An explanation on how to do this, is given in the section <a href="#install">Ins
 <li><em>--mathjax true|false</em> should there be the MathJax library included</li>
 <li><em>--refresh 0|10</em> should there be the autorefresh header included only values above 9 are consudered
 </li></ul>
+
 <p>If the file extension of the outfile is either html or htm a HTML file is created. If the output
   file has other file extension the documentation after <em>#'</em> comments is simply extracted and stored
   in the given <em>outfile</em>, <em>-mode</em> flag  (one of -html, -md, -pandoc) is not given, the output format
@@ -93,177 +128,258 @@ An explanation on how to do this, is given in the section <a href="#install">Ins
   If output is html a <em>--css</em> flag can be given to use the given stylesheet file instead of the default
   style sheet embedded within the mkdoc code. As well since version 0.8.0 a --header and --footer option
   is available to add HTML code at the beginning and at the end of the document.</p>
+
 <p>Example:</p>
-<pre class="code"><code>package require mkdoc::mkdoc
+
+<pre class='code'><code>package require mkdoc::mkdoc
 mkdoc::mkdoc mkdoc.tcl mkdoc.html              ## simple HTML page
 mkdoc::mkdoc mkdoc.tcl mkdoc.md                ## just output a Markdown page
 mkdoc::mkdoc mkdoc.tcl mkdoc.html --refresh 20 ## reload HTML page every twenty seconds</code></pre>
 </blockquote>
-<h2><a name="format">FORMATTING</a></h2>
+
+<h2><a name='format'>FORMATTING</a></h2>
+
 <p>For a complete list of Markdown formatting commands consult the basic Markdown syntax at <a href="https://daringfireball.net/projects/markdown/syntax">https://daringfireball.net</a>. 
 Here just the most basic essentials  to create documentation are described.
 Please note, that formatting blocks in Markdown are separated by an empty line, and empty line in this documenting mode is a line prefixed with the <code>#'</code> and nothing thereafter.</p>
-<p><strong>Title and Author</strong></p>
-<p>Title and author can be set at the beginning of the documentation in a so called YAML header. 
+
+<p><strong>Title, Author and Date</strong></p>
+
+<p>Title, author and date can be set at the beginning of the documentation in a so called YAML header. 
 This header will be as well used by the document converter <a href="https://pandoc.org">pandoc</a>  to handle various options for later processing if you extract not HTML but Markdown code from your documentation.</p>
+
 <p>A YAML header starts and ends with three hyphens. Here is the YAML header of this document:</p>
-<pre class="code"><code>#' ---
+
+<pre class='code'><code>#' ---
 #' title: mkdoc - Markdown extractor and formatter
 #' author: Dr. Detlef Groth, Schwielowsee, Germany
 #' date: 2024-11-21
 #' ---</code></pre>
+
 <p>Those five lines produce the three lines on top of this document. You can extend the header if you would like to process your document after extracting the Markdown with other tools, for instance with Pandoc.</p>
+
 <p>You can as well specify an other style sheet, than the default by adding
 the following style information:</p>
-<pre class="code"><code>#' ---
+
+<pre class='code'><code>#' ---
 #' title: mkdoc - Markdown extractor and formatter
 #' author: Dr. Detlef Groth, Schwielowsee, Germany
 #' date: 2024-11-21
 #' css: tufte.css
 #' ---</code></pre>
+
 <p>Please note, that the indentation is required and it is two spaces.</p>
+
 <p><strong>Headers</strong></p>
+
 <p>Headers are prefixed with the hash symbol, single hash stands for level 1 heading, double hashes for level 2 heading, etc.
 Please note, that the embedded style sheet centers level 1 and level 3 headers, there are intended to be used
 for the page title (h1), author (h3) and date information (h3) on top of the page.</p>
-<pre class="code"><code>  #'  ## &lt;a name="sectionname"&gt;Section title&lt;/a&gt;
+
+<pre class='code'><code>  #'  ## &lt;a name=&quot;sectionname&quot;&gt;Section title&lt;/a&gt;
   #'    
   #'  Some free text that follows after the required empty 
   #'  line above ...</code></pre>
+
 <p>This produces a level 2 header. Please note, if you have a section name <code>synopsis</code> the code fragments thereafer will be hilighted different than the other code fragments. You should only use level 2 and 3 headers for the documentation. Level 1 header are reserved for the title.</p>
+
 <p><strong>Lists</strong></p>
+
 <p>Lists can be given either using hyphens or stars at the beginning of a line.</p>
-<pre class="code"><code>#' - item 1
+
+<pre class='code'><code>#' - item 1
 #' - item 2
 #' - item 3</code></pre>
+
 <p>Here the output:</p>
+
 <ul>
 <li>item 1</li>
 <li>item 2</li>
 <li>item 3
 </li></ul>
+
 <p>A special list on top of the help page could be the table of contents list. Here is an example:</p>
-<pre class="code"><code>#' ## Table of Contents
+
+<pre class='code'><code>#' ## Table of Contents
 #'
 #' - [Synopsis](#synopsis)
 #' - [Description](#description)
 #' - [Command](#command)
 #' - [Example](#example)
 #' - [Authors](#author)</code></pre>
+
 <p>This will produce in HTML mode a clickable hyperlink list. You should however create
 the name targets using html code like so:</p>
+
 <pre><code> &lt;a name='synopsis'&gt;Synopsis2&lt;/a&gt; </code></pre>
+
 <p><strong>Hyperlinks</strong></p>
+
 <p>Hyperlinks are written with the following markup code:</p>
-<pre class="code"><code>[Link text](URL)</code></pre>
+
+<pre class='code'><code>[Link text](URL)</code></pre>
+
 <p>Let's link to the Tcler's Wiki:</p>
-<pre class="code"><code>[Tcler's Wiki](https://wiki.tcl-lang.org/)</code></pre>
+
+<pre class='code'><code>[Tcler's Wiki](https://wiki.tcl-lang.org/)</code></pre>
+
 <p>produces: <a href="https://wiki.tcl-lang.org/">Tcler's Wiki</a></p>
+
 <p><strong>Indentations</strong></p>
+
 <p>Indentations are achieved using the greater sign:</p>
-<pre class="code"><code>#' Some text before
+
+<pre class='code'><code>#' Some text before
 #'
 #' &gt; this will be indented
 #'
 #' This will be not indented again</code></pre>
+
 <p>Here the output:</p>
+
 <p>Some text before</p>
+
 <blockquote>
 <p>this will be indented</p>
 </blockquote>
+
 <p>This will be not indented again</p>
+
 <p>Also lists can be indented:</p>
-<pre class="code"><code>&gt; - item 1
+
+<pre class='code'><code>&gt; - item 1
   - item 2
   - item 3</code></pre>
+
 <p>produces:</p>
+
 <blockquote>
 <ul>
 <li>item 1</li>
 <li>item 2</li>
 <li>item 3</li></ul>
+
+
 </blockquote>
+
 <p><strong>Fontfaces</strong></p>
+
 <p>Italic font face can be requested by using single stars or underlines at the beginning 
 and at the end of the text. Bold is achieved by dublicating those symbols:
 Monospace font appears within backticks.
 Here an example:</p>
-<pre class="code"><code>#' &gt; I am _italic_ and I am __bold__! But I am programming code: `ls -l`</code></pre>
+
+<pre class='code'><code>#' &gt; I am _italic_ and I am __bold__! But I am programming code: `ls -l`</code></pre>
+
 <blockquote>
 <p>I am <em>italic</em> and I am <strong>bold</strong>! But I am programming code: <code>ls -l</code></p>
 </blockquote>
+
 <p><strong>Images</strong></p>
+
 <p>If you insist on images in your documentation, images can be embedded in Markdown with a syntax close to links.
 The links here however start with an exclamation mark:</p>
-<pre class="code"><code>#' ![image caption](filename.png)</code></pre>
+
+<pre class='code'><code>#' ![image caption](filename.png)</code></pre>
+
 <p>The source code of mkdoc.tcl is a good example for usage of this source code 
 annotation tool. Don't overuse the possibilities of Markdown, sometimes less is more. 
 Write clear and concise, don't use fancy visual effects.</p>
+
 <h3><a name="code-blocks">Code blocks</a></h3>
+
 <p>Code blocks can be started using either three or more spaces after the #' sequence 
 or by embracing the code block with triple backticks on top and on bottom. Here an example:</p>
-<pre class="code"><code>#' ```
-#' puts "Hello World!"
+
+<pre class='code'><code>#' ```
+#' puts &quot;Hello World!&quot;
 #' ```</code></pre>
+
 <p>Here the output:</p>
-<pre class="code"><code>puts "Hello World!"</code></pre>
+
+<pre class='code'><code>puts &quot;Hello World!&quot;</code></pre>
+
 <p>Since version 0.8.0 mkdoc as well included the inclusion of Javascript files or libraries like the library 
 <a href="https://highlightjs.org/">highlighjs</a>. Just use the command line or mkdoc function argument <code>--javascript highlightjs</code>
 and you get syntax highlighting for code blocks. Here an example:</p>
-<pre class="code"><code>#' ```{r} 
+
+<pre class='code'><code>#' ```{r} 
 #' test &lt;- function () {
-#'   print("testig2")
+#'   print(&quot;testig2&quot;)
 #' test();
 #' ```</code></pre>
+
 <p>Output:</p>
-<pre class="code"><code class="r">test &lt;- function () {
-  print("testig2")
+
+<pre class='code'><code class='r'>test &lt;- function () {
+  print(&quot;testig2&quot;)
 test();</code></pre>
+
 <h3><a name="equations">Equations</a></h3>
+
 <p>Since version 0.9.0 as well LaTeX equations can be embedded into Markdown documents and are
 rendered using the <a href="https://www.mathjax.org/">MathJax</a> library. Just include either inline 
 equations using parenthesis protected by two backslashes or block equations embedded within
 brackets protected by two backslashes or within two dollar symbols in your Markdown code and use
 the option <code>--mathjax true</code> during document conversion. Here an example for 
 inline equations:</p>
-<pre class="code"><code>The  famous  Einstein  equation  \\( E = mc^2 \\) is  probably  the most known
+
+<pre class='code'><code>The  famous  Einstein  equation  \\( E = mc^2 \\) is  probably  the most known
 equation world wide.</code></pre>
+
 <p>And here the output:</p>
+
 <p>The  famous  Einstein  equation  \( E = mc^2 \) is  probably  the most know
 equation world wide.</p>
+
 <p>Block equations should be usually aligned left, like in the
 following examples:</p>
-<pre class="code"><code>&lt;div style="display: flex;"&gt;
+
+<pre class='code'><code>&lt;div style=&quot;display: flex;&quot;&gt;
 
 $$ \sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \tag{1} $$
 
 &lt;/div&gt;</code></pre>
+
 <p>And here the output:</p>
+
 <div style="display: flex;">
 
 $$ \sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \tag{1} $$
 
 </div>
+
 <p><strong>Includes</strong></p>
-<p>mkdoc in contrast to standard markdown as well support includes. Using the <code>#' #include "filename.md"</code> syntax 
+
+<p>mkdoc in contrast to standard markdown as well support includes. Using the <code>#' #include &quot;filename.md&quot;</code> syntax 
 it is possible to include other markdown files. This might be useful for instance to include the same 
 header or a footer in a set of related files.</p>
-<h2><a name="install">INSTALLATION</a></h2>
+
+<h2><a name='install'>INSTALLATION</a></h2>
+
 <p>The mkdoc::mkdoc package can be installed either as command line application or as a Tcl module. It requires the markdown, cmdline, yaml and textutils packages from tcllib to be installed.</p>
+
 <p>Installation as command line application is easiest by downloading the file <a href="https://raw.githubusercontent.com/mittelmark/DGTcl/master/bin/mkdoc-0.6.bin">mkdoc-0.6.bin</a>, which
 contains the main script file and all required libraries, to your local machine. Rename this file to mkdoc, make it executable and coy it to a folder belonging to your PATH variable.</p>
+
 <p>Installation as command line application can be as well done by copying the <code>mkdoc.tcl</code> as 
 <code>mkdoc</code> to a directory which is in your executable path. You should make this file executable using <code>chmod</code>.</p>
+
 <p>Installation as Tcl package by copying the mkdoc folder to a folder 
 which is in your library path for Tcl. Alternatively you can install it as Tcl mode by copying it 
 in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href="https://www.tcl.tk/man/tcl8.6/TclCmd/tm.htm">tm manual page</a></p>
-<h2><a name="see">SEE ALSO</a></h2>
+
+<h2><a name='see'>SEE ALSO</a></h2>
+
 <ul>
 <li><a href="https://core.tcl-lang.org/tcllib/doc/trunk/embedded/index.md">tcllib</a> for the Markdown and the textutil packages</li>
 <li><a href="https://pandoc.org">pandoc</a> - a universal document converter</li>
 <li><a href="https://github.com/apnadkarni/ruff">Ruff!</a> Ruff! documentation generator for Tcl using Markdown syntax as well
 </li></ul>
-<h2><a name="changes">CHANGES</a></h2>
+
+<h2><a name='changes'>CHANGES</a></h2>
+
 <ul>
 <li>2019-11-19 Release 0.1</li>
 <li>2019-11-22 Adding direct conversion from Markdown files to HTML files.</li>
@@ -291,6 +407,7 @@ in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href
 <li>terminal help update and cleanup</li>
 <li>moved to Github in Wiki</li>
 <li>code cleanup</li></ul>
+
 </li>
 <li>2022-04-XX Release 0.7.0
 <ul>
@@ -300,6 +417,7 @@ in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href
 <li>splitting of command line app to the apps folder</li>
 <li>adding hook package requirement (benefit?)</li>
 <li>changing license to BSD</li></ul>
+
 </li>
 <li>2023-09-07 Release 0.7.1 - image tag fix </li>
 <li>2023-11-17 Release 0.8.0 
@@ -314,27 +432,40 @@ in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href
    (issue is done on tcllib)</li>
 <li>adding example file in examples to show syntax highlighting</li>
 <li>adding Makefile to build standalone application using tpack (80kb)</li></ul>
+
 </li>
 <li>2024-11-16 Release 0.9.0
 <ul>
 <li>support for mathjax</li></ul>
+
 </li>
 <li>2024-11-XX Release 0.10.0
 <ul>
 <li>support for refresh option to autorefresh a HTML page </li>
 <li>removed run support, use pantcl instead</li>
-<li>fixing issues with greater, lower and quote signs in code fragments
+<li>fixing issues with greater, lower and quote signs in code fragments</li>
+<li>removing inlining external javascript files into HTML output</li>
+<li>adding --base64 option to inline local images and css files
 </li></ul>
+
 </li></ul>
-<h2><a name="todo">TODO</a></h2>
+
+<h2><a name='todo'>TODO</a></h2>
+
 <ul>
 <li>dtplite support ?
 </li></ul>
-<h2><a name="authors">AUTHOR(s)</a></h2>
+
+<h2><a name='authors'>AUTHOR(s)</a></h2>
+
 <p>The <strong>mkdoc::mkdoc</strong> package was written by Dr. Detlef Groth, Schwielowsee, Germany.</p>
-<h2><a name="license">LICENSE AND COPYRIGHT</a></h2>
-<p>Markdown extractor and converter mkdoc::mkdoc, version 0.9.0</p>
+
+<h2><a name='license'>LICENSE AND COPYRIGHT</a></h2>
+
+<p>Markdown extractor and converter mkdoc::mkdoc, version 0.10.0</p>
+
 <p>Copyright (c) 2019-24  Detlef Groth, E-mail: &lt;detlef(at)dgroth(dot)de&gt;</p>
+
 <p>BSD License type:
 Sun Microsystems, Inc. The following terms apply to all files a ssociated
 with the software unless explicitly disclaimed in individual files. 
@@ -346,19 +477,26 @@ or royalty fee is required for any of the authorized uses. Modifications to
 this software may be copyrighted by their authors and need not follow the
 licensing terms described here, provided that the new terms are clearly
 indicated on the first page of each file where they apply.</p>
+
 <p>In no event shall the authors or distributors be liable to any party for
 direct, indirect, special, incidental, or consequential damages arising out
 of the use of this software, its documentation, or any derivatives thereof,
 even if the authors have been advised of the possibility of such damage.</p>
+
 <p>The authors and distributors specifically disclaim any warranties,
 including, but not limited to, the implied warranties of merchantability,
 fitness for a particular purpose, and non-infringement. This software is
-provided on an "as is" basis, and the authors and distributors have no
+provided on an &quot;as is&quot; basis, and the authors and distributors have no
 obligation to provide maintenance, support, updates, enhancements, or
 modifications.</p>
+
 <p>RESTRICTED RIGHTS: Use, duplication or disclosure by the government is
 subject to the restrictions as set forth in subparagraph (c) (1) (ii) of
 the Rights in Technical Data and Computer Software Clause as DFARS
 252.227-7013 and FAR 52.227-19.</p>
+
+
+
 </body>
-</html><!--Generated by HTMLArk 2024-11-22 15:11:43.176679. Original URL mkdoc/mkdoc.html-->
+</html>
+

@@ -5,10 +5,12 @@ exec tclsh "$0" "$@"
 package require Tcl 8.6
 package require mkdoc
 
-set Usage [string map [list "\n    " "\n"] {
-    Usage: __APP__ ?[--help|version]? INFILE OUTFILE ?[--css file.css]?
-           ?[--header header.html]? ?[--footer footer.html]? ?--mathjax true?
-
+set USAGE [string map [list "\n    " "\n"] {
+    Usage: __APP__ ?--help|--version|--license? INFILE OUTFILE ?--css file.css? 
+                      ?--header header.html? ?--footer footer.html? ?--mathjax true? 
+                      ?--javascript JSLIB|JSFile? ?--refresh 10? ?--base64 true?
+}]
+set HELP [string map [list "\n    " "\n"] {
     mkdoc - code documentation tool to process embedded Markdown markup
             given after "#'" comments
 
@@ -32,9 +34,11 @@ set Usage [string map [list "\n    " "\n"] {
         --header HTMLFILE  - file with HTML code to be included after the body tag
         --footer HTMLFILE  - file with HTML code to be included before the closing
                              body tag                            
-        --javascript JSLIB - hightlightjs|file1,file2,...                     
-        --mathjax true     - Embed the Mathjax Javascript library to add LaTeX formulas                    
-                            
+        --base64  BOOL     - should local images, css files and JavaScript files being embedded as base 64 codes, default: true                
+        --javascript JSLIB - hightlightjs|file1,file2,... using these Javascript libs / files, default: NULL
+        --mathjax BOOL     - Embed the Mathjax Javascript library to add LaTeX formulas, default: false
+        --refresh INT      - Create a HTML page which does automatic refreshing after N seconds, default: 0
+        
     Examples:
 
         # create manual page for mkdoc.tcl itself 
@@ -68,22 +72,21 @@ set Usage [string map [list "\n    " "\n"] {
     License: BSD
 }]
 
+
 if {[lsearch -exact $argv {--version}] > -1} {
     puts "[package provide mkdoc]"
-    return
-}
-if {[lsearch -exact $argv {--license}] > -1} {
+} elseif {[lsearch -exact $argv {--license}] > -1} {
     puts "BSD License - see manual page"
-    return
-}
-
-if {[llength $argv] < 2 || [lsearch -exact $argv {--help}] > -1} {
-    set usage [regsub -all {__APP__} $Usage [info script]]
+} elseif {[lsearch -exact $argv {--help}] > -1} {
+    set usage [regsub -all {__APP__} $USAGE [info script]]
     puts $usage
-    exit 0
+    set help [regsub -all {__APP__} $HELP [info script]]
+    puts $help
     
-} elseif {[llength $argv] >= 2 && [lsearch $argv {--run}] == 1} {
-    mkdoc::run $argv 
+    exit 0
+} elseif {[llength $argv] < 2} {
+    set usage [regsub -all {__APP__} $USAGE [info script]]
+    puts $usage
 } elseif {[llength $argv] == 2} {
     if {[regexp {^-.} [lindex $argv 1]]} {
 	puts stderr "Error: wrong outfile name [lindex $argv 1]"
