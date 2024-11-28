@@ -1,7 +1,10 @@
 # mkdoc
 
-[![Release](https://img.shields.io/github/v/release/mittelmark/mkdoc.svg?label=current+release)](https://github.com/mittelmark/mkdoc/releases)
 [![license](https://img.shields.io/badge/license-BSD-lightgray.svg)](https://opensource.org/license/bsd)
+[![Release](https://img.shields.io/github/v/release/mittelmark/mkdoc.svg?label=current+release)](https://github.com/mittelmark/mkdoc/releases)
+![Downloads](https://img.shields.io/github/downloads/mittelmark/mkdoc/total)
+![Commits](https://img.shields.io/github/commits-since/mittelmark/mkdoc/latest)
+[![Docu](https://img.shields.io/badge/Docu-blue)](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc.html)
 
 Markdown to HTML converter and source code documentation tool using embedded Markdown for programming
 languages supporting either multiline comments or at least the # character for comments.
@@ -10,6 +13,11 @@ languages supporting either multiline comments or at least the # character for c
 * Tcl application to extract Markdown documentation from source code tools
 * Tcl library for  programmers to accomplish both things above from within the
   Tcl programming language
+
+Derived projects:
+
+- [pantcl document processor](https://github.com/mittelmark/pantcl)
+- [pantcl4r R package](https://github.com/mittelmark/pantcl4r)
 
 Mkdoc is part of the  [pantcl](https://github.com/mittelmark/pantcl)  document  processor
 which  supports  embedding  and  evaluating  other  documentation  tools  like
