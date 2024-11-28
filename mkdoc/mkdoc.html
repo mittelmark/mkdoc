@@ -33,7 +33,7 @@
 
 <h1 class="title">mkdoc::mkdoc 0.10.0</h1>
 <h2 class="author">Detlef Groth, Schwielowsee, Germany</h2>
-<h2 class="date">2024-11-22</h2>
+<h2 class="date">2024-11-28</h2>
 
 <p><center> Manual: <a href="mkdoc.html">short (doctools)</a> - <a href="mkdoc-mkdoc.html">long (mkdoc)</a> </center></p>
 
@@ -70,7 +70,7 @@ doctools format and optionally converting it into HTML.</p>
 
 <pre class='code'><code>package require mkdoc::mkdoc
 mkdoc::mkdoc inputfile outputfile ?--css file1.css,file2.css? \
-   ?--header header.html? ?--footer footer.html? \
+   ?--header header.html? ?--footer footer.html? ?--base64 true?\
    ?--javascript highlightjs|file1.js,file2.js? ?--mathjax true? ?--refresh 10?</code></pre>
 
 <p>Usage as command line application for extraction of Markdown comments prefixed with <code>#'</code>:</p>
@@ -81,7 +81,7 @@ mkdoc::mkdoc inputfile outputfile ?--css file1.css,file2.css? \
 
 <pre class='code'><code>mkdoc inputfile.md outputfile.html ?--css file.css,file2.css --header header.html \
   --footer footer.html --javascript highlighjs|filename1,filename2  --mathjax true \
-  --refresh 10?</code></pre>
+  --refresh 10 --base64 true?</code></pre>
 
 <h2><a name='description'>DESCRIPTION</a></h2>
 
@@ -109,12 +109,13 @@ An explanation on how to do this, is given in the section <a href="#install">Ins
 <ul>
 <li><em>infile</em> - file with embedded markdown documentation</li>
 <li><em>outfile</em> -  name of output file extension</li>
+<li><em>--base64 true</em> should local images and CSS files be included, default: true</li>
 <li><em>--css cssfile</em> if outfile is an HTML file use the given <em>cssfile</em></li>
 <li><em>--footer footer.html</em> if outfile is an HTML file add this footer before the closing body tag</li>
 <li><em>--header header.html</em> if outfile is an HTML file add this header after  the opening body tag</li>
 <li><em>--javascript highlighjs|filename1,filename2</em> if outfile is an HTML file embeds either the hilightjs Javascript hilighter or the given local javascript filename(s) </li>
-<li><em>--mathjax true|false</em> should there be the MathJax library included</li>
-<li><em>--refresh 0|10</em> should there be the autorefresh header included only values above 9 are consudered
+<li><em>--mathjax true|false</em> should there be the MathJax library included, default: false</li>
+<li><em>--refresh 0|10</em> should there be the autorefresh header included only values above 9 are considered, default: 0
 </li></ul>
 
 <p>If the file extension of the outfile is either html or htm a HTML file is created. If the output
@@ -132,9 +133,10 @@ An explanation on how to do this, is given in the section <a href="#install">Ins
 <p>Example:</p>
 
 <pre class='code'><code>package require mkdoc::mkdoc
-mkdoc::mkdoc mkdoc.tcl mkdoc.html              ## simple HTML page
-mkdoc::mkdoc mkdoc.tcl mkdoc.md                ## just output a Markdown page
-mkdoc::mkdoc mkdoc.tcl mkdoc.html --refresh 20 ## reload HTML page every twenty seconds</code></pre>
+mkdoc::mkdoc mkdoc.tcl mkdoc.html                ## simple HTML page
+mkdoc::mkdoc mkdoc.tcl mkdoc.md                  ## just output a Markdown page
+mkdoc::mkdoc mkdoc.tcl mkdoc.html --refresh 20   ## reload HTML page every twenty seconds
+mkdoc::mkdoc mkdoc.tcl mkdoc.html --mathjax true ## parse inline equations using mathjax library</code></pre>
 </blockquote>
 
 <h2><a name='format'>FORMATTING</a></h2>
@@ -328,7 +330,7 @@ inline equations:</p>
 <pre class='code'><code>The  famous  Einstein  equation  \\( E = mc^2 \\) is  probably  the most known
 equation world wide.</code></pre>
 
-<p>And here the output:</p>
+<p>And here the output (will not work on http://htmlpreview.github.io/):</p>
 
 <p>The  famous  Einstein  equation  \( E = mc^2 \) is  probably  the most know
 equation world wide.</p>
@@ -439,7 +441,7 @@ in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href
 <li>support for mathjax</li></ul>
 
 </li>
-<li>2024-11-XX Release 0.10.0
+<li>2024-11-28 Release 0.10.0
 <ul>
 <li>support for refresh option to autorefresh a HTML page </li>
 <li>removed run support, use pantcl instead</li>

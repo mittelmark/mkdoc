@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <241128.1503>
+#  Last Modified : <241128.1545>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -36,7 +36,7 @@
 #' ---
 #' title: mkdoc::mkdoc 0.10.0
 #' author: Detlef Groth, Schwielowsee, Germany
-#' date: 2024-11-22
+#' date: 2024-11-28
 #' css: mkdoc.css
 #' ---
 #' 
@@ -71,7 +71,7 @@
 #' ```
 #' package require mkdoc::mkdoc
 #' mkdoc::mkdoc inputfile outputfile ?--css file1.css,file2.css? \
-#'    ?--header header.html? ?--footer footer.html? \
+#'    ?--header header.html? ?--footer footer.html? ?--base64 true?\
 #'    ?--javascript highlightjs|file1.js,file2.js? ?--mathjax true? ?--refresh 10?
 #' ```
 #'
@@ -86,7 +86,7 @@
 #' ```
 #' mkdoc inputfile.md outputfile.html ?--css file.css,file2.css --header header.html \
 #'   --footer footer.html --javascript highlighjs|filename1,filename2  --mathjax true \
-#'   --refresh 10?
+#'   --refresh 10 --base64 true?
 #' ```
 #'
 #' ## <a name='description'>DESCRIPTION</a>
@@ -113,12 +113,13 @@
 #' 
 #' > - *infile* - file with embedded markdown documentation
 #'   - *outfile* -  name of output file extension
+#'   - *--base64 true* should local images and CSS files be included, default: true
 #'   - *--css cssfile* if outfile is an HTML file use the given *cssfile*
 #'   - *--footer footer.html* if outfile is an HTML file add this footer before the closing body tag
 #'   - *--header header.html* if outfile is an HTML file add this header after  the opening body tag
 #'   - *--javascript highlighjs|filename1,filename2* if outfile is an HTML file embeds either the hilightjs Javascript hilighter or the given local javascript filename(s) 
-#'   - *--mathjax true|false* should there be the MathJax library included
-#'   - *--refresh 0|10* should there be the autorefresh header included only values above 9 are consudered
+#'   - *--mathjax true|false* should there be the MathJax library included, default: false
+#'   - *--refresh 0|10* should there be the autorefresh header included only values above 9 are considered, default: 0
 #'     
 #' > If the file extension of the outfile is either html or htm a HTML file is created. If the output
 #'   file has other file extension the documentation after _#'_ comments is simply extracted and stored
@@ -136,9 +137,10 @@
 #'
 #' > ```
 #' package require mkdoc::mkdoc
-#' mkdoc::mkdoc mkdoc.tcl mkdoc.html              ## simple HTML page
-#' mkdoc::mkdoc mkdoc.tcl mkdoc.md                ## just output a Markdown page
-#' mkdoc::mkdoc mkdoc.tcl mkdoc.html --refresh 20 ## reload HTML page every twenty seconds
+#' mkdoc::mkdoc mkdoc.tcl mkdoc.html                ## simple HTML page
+#' mkdoc::mkdoc mkdoc.tcl mkdoc.md                  ## just output a Markdown page
+#' mkdoc::mkdoc mkdoc.tcl mkdoc.html --refresh 20   ## reload HTML page every twenty seconds
+#' mkdoc::mkdoc mkdoc.tcl mkdoc.html --mathjax true ## parse inline equations using mathjax library
 #' > ```
 
 package require Tcl 8.6
@@ -655,7 +657,7 @@ proc mkdoc::mkdoc {filename outfile args} {
 #' equation world wide.
 #' ```
 #' 
-#' And here the output:
+#' And here the output (will not work on http://htmlpreview.github.io/):
 #' 
 #' The  famous  Einstein  equation  \\( E = mc^2 \\) is  probably  the most know
 #' equation world wide. 
@@ -755,7 +757,7 @@ proc mkdoc::mkdoc {filename outfile args} {
 #'      - adding Makefile to build standalone application using tpack (80kb)
 #' - 2024-11-16 Release 0.9.0
 #'      - support for mathjax
-#' - 2024-11-XX Release 0.10.0
+#' - 2024-11-28 Release 0.10.0
 #'      - support for refresh option to autorefresh a HTML page 
 #'      - removed run support, use pantcl instead
 #'      - fixing issues with greater, lower and quote signs in code fragments
