@@ -3,12 +3,12 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="title" content="mkdoc::mkdoc 0.10.0">
+<meta name="title" content="mkdoc::mkdoc 0.10.2">
 <meta name="author" content="Detlef Groth, Schwielowsee, Germany">
     
-<title>mkdoc::mkdoc 0.10.0</title>
+<title>mkdoc::mkdoc 0.10.2</title>
     
-            <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">            <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">
+            <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">
             <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
             <!-- tcl must be loaded extra -->
             <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/languages/tcl.min.js"></script>
@@ -31,9 +31,9 @@
 
 
 
-<h1 class="title">mkdoc::mkdoc 0.10.0</h1>
+<h1 class="title">mkdoc::mkdoc 0.10.2</h1>
 <h2 class="author">Detlef Groth, Schwielowsee, Germany</h2>
-<h2 class="date">2024-11-28</h2>
+<h2 class="date">2024-12-24</h2>
 
 <p><center> Manual: <a href="mkdoc.html">short (doctools)</a> - <a href="mkdoc-mkdoc.html">long (mkdoc)</a> </center></p>
 
@@ -70,7 +70,7 @@ doctools format and optionally converting it into HTML.</p>
 
 <pre class='code'><code>package require mkdoc::mkdoc
 mkdoc::mkdoc inputfile outputfile ?--css file1.css,file2.css? \
-   ?--header header.html? ?--footer footer.html? ?--base64 true?\
+   ?--header header.html? ?--footer footer.html? ?--base64 true? \
    ?--javascript highlightjs|file1.js,file2.js? ?--mathjax true? ?--refresh 10?</code></pre>
 
 <p>Usage as command line application for extraction of Markdown comments prefixed with <code>#'</code>:</p>
@@ -447,7 +447,17 @@ in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href
 <li>removed run support, use pantcl instead</li>
 <li>fixing issues with greater, lower and quote signs in code fragments</li>
 <li>removing inlining external javascript files into HTML output</li>
-<li>adding --base64 option to inline local images and css files
+<li>adding --base64 option to inline local images and css files</li></ul>
+
+</li>
+<li>2024-11-28 Release 0.10.1
+<ul>
+<li>minor documentation fix</li></ul>
+
+</li>
+<li>2024-12-24 Release 0.10.2
+<ul>
+<li>amp-amp fix for source code blocks
 </li></ul>
 
 </li></ul>
@@ -464,9 +474,9 @@ in your module path as <code>mkdoc-0.6.0.tm</code> for instance. See the <a href
 
 <h2><a name='license'>LICENSE AND COPYRIGHT</a></h2>
 
-<p>Markdown extractor and converter mkdoc::mkdoc, version 0.10.0</p>
+<p>Markdown extractor and converter mkdoc::mkdoc, version 0.10.2</p>
 
-<p>Copyright (c) 2019-24  Detlef Groth, E-mail: &lt;detlef(at)dgroth(dot)de&gt;</p>
+<p>Copyright (c) 2019-24  Detlef Groth, E-mail: &lt;dgroth(at)uni(minus)potsdam(dot)de&gt;</p>
 
 <p>BSD License type:
 Sun Microsystems, Inc. The following terms apply to all files a ssociated
