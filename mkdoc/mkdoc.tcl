@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <250101.0934>
+#  Last Modified : <250104.1042>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -20,10 +20,13 @@
 #                  2023-11-18 Release 0.8.0 
 #                  2024-11-16 Release 0.9.0 Mathjax support
 #                  2024-11-21 Release 0.10.0 auto refresh support
+#                  2024-11-28 Release 0.10.1 minor documentation fix
+#                  2024-12-24 Release 0.10.2 amp-amp fix for source code blocks
+#                  2025-01-04 Release 0.11.0 Tcl 9 support
 #	
 ##############################################################################
 #
-# Copyright (c) 2019-2024  Dr. Detlef Groth, E-mail: detlef(at)dgroth(dot)de
+# Copyright (c) 2019-2025  Dr. Detlef Groth, E-mail: detlef(at)dgroth(dot)de
 # 
 # This library is free software; you can use, modify, and redistribute it for
 # any purpose, provided that existing copyright notices are retained in all
@@ -34,9 +37,9 @@
 #
 ##############################################################################
 #' ---
-#' title: mkdoc::mkdoc 0.10.2
+#' title: mkdoc::mkdoc 0.11.0
 #' author: Detlef Groth, Schwielowsee, Germany
-#' date: 2024-12-24
+#' date: 2025-01-04
 #' css: mkdoc.css
 #' ---
 #' 
@@ -453,7 +456,7 @@ proc mkdoc::mkdoc {filename outfile args} {
 #' #' ---
 #' #' title: mkdoc - Markdown extractor and formatter
 #' #' author: Dr. Detlef Groth, Schwielowsee, Germany
-#' #' date: 2024-11-21
+#' #' date: 2025-01-04
 #' #' ---
 #' ```
 #' 
@@ -760,6 +763,8 @@ proc mkdoc::mkdoc {filename outfile args} {
 #'      - minor documentation fix
 #' - 2024-12-24 Release 0.10.2
 #'      - amp-amp fix for source code blocks
+#' - 2025-01-04 Release 0.11.0
+#'      - Tcl 9 support
 #'
 #' ## <a name='todo'>TODO</a>
 #'
@@ -771,9 +776,9 @@ proc mkdoc::mkdoc {filename outfile args} {
 #'
 #' ## <a name='license'>LICENSE AND COPYRIGHT</a>
 #'
-#' Markdown extractor and converter mkdoc::mkdoc, version 0.10.2
+#' Markdown extractor and converter mkdoc::mkdoc, version 0.11.0
 #'
-#' Copyright (c) 2019-24  Detlef Groth, E-mail: <dgroth(at)uni(minus)potsdam(dot)de>
+#' Copyright (c) 2019-25  Detlef Groth, E-mail: <dgroth(at)uni(minus)potsdam(dot)de>
 #' 
 #' BSD License type:
 

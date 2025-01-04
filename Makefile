@@ -7,6 +7,7 @@ mdown-files=markdown.tcl pkgIndex.tcl
 txutl-files=tabify.tcl repeat.tcl pkgIndex.tcl
 tcllib=https://raw.githubusercontent.com/tcltk/tcllib/master/
 VERSION=$(shell grep "package ifneeded" mkdoc/pkgIndex.tcl | grep -Eo '[.0-9]{2,}')
+TCL9=~/.local/opt/bin/tclsh9.0
 app:	
 	-rm -rf mkdoc.vfs
 	tpack init mkdoc.vfs
@@ -25,9 +26,8 @@ app:
 	## fix bug for code in triple backtick section
 	perl -pe 's/set code_result \[html_escape +.code_result\]//' mkdoc.vfs/lib/markdown/markdown.tcl > temp.tcl
 	mv temp.tcl mkdoc.vfs/lib/markdown/markdown.tcl
-	
 	for file in $(txutl-files); do wget $(tcllib)modules/textutil/$${file} -O mkdoc.vfs/lib/textutil/$${file}; done	
-	tpack wrap mkdoc.tapp --lz4
+	$(TCL9) ../tpack/tpack-b64.tcl wrap mkdoc.tapp --lz4
 	cp mkdoc.tapp bin/mkdoc-`tclsh mkdoc.tapp --version`.bin
 	ls -lth bin/mkdoc*.bin
 	echo done
