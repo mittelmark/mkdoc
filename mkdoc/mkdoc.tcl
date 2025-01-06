@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <250104.1042>
+#  Last Modified : <250106.0906>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -153,7 +153,7 @@ package require Markdown
 
 package provide mkdoc 0.11.0
 package provide mkdoc::mkdoc 0.11.0
-namespace eval mkdoc {
+namespace eval ::mkdoc {
     variable deindent [list \n\t \n "\n    " \n]
     
     variable htmltemplate [string map $deindent {
@@ -196,7 +196,7 @@ namespace eval mkdoc {
     }]
 } 
 
-proc mkdoc::inline-assets {filename html} {
+proc ::mkdoc::inline-assets {filename html} {
     set htm ""
     foreach line [split $html "\n"] {
         if {[regexp {<img src="(.+?)"} $line]} {
@@ -234,7 +234,7 @@ proc mkdoc::inline-assets {filename html} {
     return $htm
 }
 
-proc mkdoc::mkdoc {filename outfile args} {
+proc ::mkdoc::mkdoc {filename outfile args} {
     variable deindent [list \n\t \n "\n    " \n]    
     variable htmltemplate
     variable footer
@@ -244,197 +244,306 @@ proc mkdoc::mkdoc {filename outfile args} {
     array set arg [list --css "" --footer "" --header "" --javascript "" \
                    --mathjax false --refresh 0 --base64 true]
     array set arg $args
-    if {[file extension $filename] eq [file extension $outfile]} {
+    if {[file extension $filename] eq [file extension $outfile] && $filename ne "-"} {
 	return -code error "Error: infile and outfile must have different file extensions!"
     }
     set outmode html
-    if {[file extension $outfile] in [list .md .man]} {
+    if {[regexp -nocase {(md|nw)$} [file extension $outfile]]} {
         set outmode markup
     }
     set inmode  code
-    if {[file extension $filename] in [list .md .man]} {
+    if {[file extension $filename] in [list .md .man] || $filename eq "-"} {
         set inmode markup
     }
 
     set markdown ""
-    if [catch {
-	open $filename r
-    } infh] {
-        return -code error "Cannot open $filename: $infh"
+    if {$filename eq "-"} {
+        set infh stdin
     } else {
-        set flag false
-        while {[gets $infh line] >= 0} {
-	    if {[regexp {^\s*#' +#include +"(.*)"} $line -> include]} {
-                if [catch {
-		    open $include r
-		} iinfh] {
-                    return -code error "Cannot open include file $include: $iinfh"
-                } else {
-                    #set ilines [read $iinfh]
-                    while {[gets $iinfh iline] >= 0} {
-                        # Process line
-                        append markdown "$iline\n"
-                    }
-                    close $iinfh
-                }
-            } elseif {$inmode eq "code" && [regexp {^\s*#' ?(.*)} $line -> md]} {
-                append markdown "$md\n"
-            } elseif {$inmode eq "markup"} {
-                append markdown "$line\n"
+        if [catch {
+            open $filename r
+        } infh] {
+                return -code error "Cannot open $filename: $infh"
             }
+    }
+    set flag false
+    while {[gets $infh line] >= 0} {
+        if {[regexp {^\s*#' +#include +"(.*)"} $line -> include]} {
+            if [catch {
+                open $include r
+            } iinfh] {
+                return -code error "Cannot open include file $include: $iinfh"
+            } else {
+                #set ilines [read $iinfh]
+                while {[gets $iinfh iline] >= 0} {
+                    # Process line
+                    append markdown "$iline\n"
+                }
+                close $iinfh
+            }
+        } elseif {$inmode eq "code" && [regexp {^\s*#' ?(.*)} $line -> md]} {
+            append markdown "$md\n"
+        } elseif {$inmode eq "markup"} {
+            append markdown "$line\n"
         }
+    }
+    if {$filename ne "-"} {
         close $infh
-        set yamldict \
-              [dict create \
-               title  "Documentation [file tail [file rootname $filename]]" \
-               author NN \
-               date   [clock format [clock seconds] -format "%Y-%m-%d"] \
-               css    mkdoc.css \
-               footer   "" \
-               header   "" \
-               javascript "" \
-               mathjax   "" \
-               refresh   ""
-               ]
+    }
+    set yamldict \
+        [dict create \
+         title  "Documentation [file tail [file rootname $filename]]" \
+         author NN \
+         date   [clock format [clock seconds] -format "%Y-%m-%d"] \
+         css    mkdoc.css \
+         footer   "" \
+         header   "" \
+         javascript "" \
+         mathjax   "" \
+         refresh   ""
+         ]
 
-        set mdhtml ""
-        set yamlflag false
-        set yamltext ""
-        set hasyaml false
-        set indent ""
-        set header $htmltemplate
-        set lnr 0
-        foreach line [split $markdown "\n"] {
-            incr lnr 
-            if {$lnr < 5 && !$yamlflag && [regexp {^---} $line]} {
-                set yamlflag true
-            } elseif {$yamlflag && [regexp {^---} $line]} {
-                set hasyaml true
-		
-                set yamldict [dict merge $yamldict [yaml::yaml2dict $yamltext]]
-
-                set yamlflag false
-            } elseif {$yamlflag} {
-                append yamltext "$line\n"
-            } else {
-                set line [regsub -all {!\[\]\((.+?)\)} $line "<img src=\"\\1\"></img>"]
-                append mdhtml "$indent$line\n"
+     set mdhtml ""
+     set yamlflag false
+     set yamltext ""
+     set hasyaml false
+     set indent ""
+     set header $htmltemplate
+     set lnr 0
+     foreach line [split $markdown "\n"] {
+         incr lnr 
+         if {$lnr < 5 && !$yamlflag && [regexp {^---} $line]} {
+             set yamlflag true
+         } elseif {$yamlflag && [regexp {^---} $line]} {
+             set hasyaml true
+             
+             set yamldict [dict merge $yamldict [yaml::yaml2dict $yamltext]]
+             
+             set yamlflag false
+         } elseif {$yamlflag} {
+             append yamltext "$line\n"
+         } else {
+             set line [regsub -all {!\[\]\((.+?)\)} $line "<img src=\"\\1\"></img>"]
+             append mdhtml "$indent$line\n"
+         }
+     }
+     if {$arg(--css) ne ""} {
+         set css ""
+         foreach cs [split $arg(--css) ","] {
+             append css   "<link rel=\"stylesheet\" href=\"$cs\">"
+         }
+         dict set yamldict css $css
+     }
+     set stylejs ""
+     if {$arg(--javascript) ne ""} {
+         if {$arg(--javascript) eq "highlightjs"} {
+             dict set yamldict javascript [string map $deindent {
+                                           <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">
+                                           <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+                                           <!-- tcl must be loaded extra -->
+                                           <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/languages/tcl.min.js"></script>
+                                           <!-- Initialize highlight.js -->
+                                           <script>hljs.highlightAll();</script>
+            }]
+            set stylejs {<style>
+            pre, blockquote pre { background: #fafafa !important; }
+            </style>
             }
-        }
-        if {$arg(--css) ne ""} {
-            set css ""
-            foreach cs [split $arg(--css) ","] {
-                append css   "<link rel=\"stylesheet\" href=\"$cs\">"
+        } else {
+            set jscode ""
+            foreach js [split $arg(--javascript) ","] {
+                append jscode "<script src=\"$js\"> </script>"
             }
-            dict set yamldict css $css
+            dict set yamldict javascript $jscode
         }
-        set stylejs ""
-        if {$arg(--javascript) ne ""} {
-            if {$arg(--javascript) eq "highlightjs"} {
-                dict set yamldict javascript [string map $deindent {
-                <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">
-                <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
-                <!-- tcl must be loaded extra -->
-                <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/languages/tcl.min.js"></script>
-                <!-- Initialize highlight.js -->
-                <script>hljs.highlightAll();</script>
-               }]
-               set stylejs {<style>
-               pre, blockquote pre { background: #fafafa !important; }
-               </style>
-               }
-            } else {
-                set jscode ""
-                foreach js [split $arg(--javascript) ","] {
-                    append jscode "<script src=\"$js\"> </script>"
+    }
+    if {$arg(--mathjax)} {
+        set document(mathjax) {<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>}
+        
+    } else {
+        set document(mathjax) ""
+    }
+    if {$arg(--refresh) > 9} {
+        set document(refresh) "<meta http-equiv=\"refresh\" content=\"$arg(--refresh)\" />"
+    } else {
+        set document(refresh) ""
+    }
+    if {$arg(--header) ne ""} {
+        if {[file exists $arg(--header)]} {
+            set infh [open $arg(--header) r]
+            dict set yamldict header [read $infh]
+            close $infh
+        }
+    }
+    if {$arg(--footer) ne ""} {
+        if {[file exists $arg(--footer)]} {
+            set infh [open $arg(--footer) r]
+            dict set yamldict footer [read $infh]
+            close $infh
+        }
+    }
+    # Regenerate yamltext from the final dict (to report the final CSS reference)
+    set yamltext "---\n"
+    foreach k [lsort -dict [dict keys $yamldict]] {
+        append yamltext "${k}: [dict get $yamldict $k]\n"
+    }
+    append yamltext "---"
+    
+    set style <style>$mkdocstyle</style>
+    
+    if {$outmode eq "html"} {
+        if {[dict get $yamldict css] ne "mkdoc.css"} {
+            # Switch from embedded style to external link
+            set style [dict get $yamldict css]
+        }
+        set html [Markdown::convert $mdhtml]
+        if {$arg(--base64)} {
+            set html [mkdoc::inline-assets $filename $html]
+        }
+        ## issue in Markdown package?
+        set html [string map {&amp;amp; &amp; &amp;lt; &lt;  &amp;gt; &gt; &amp;quot; &quot;} $html]  
+        ## fixing curly brace issues in backtick code chunk
+        set html [regsub -all "code class='\{" $html {code class='}] 
+        set html [regsub -all "code class='(\[^'\]+)\}'" $html {code class='\1'}]             
+        set out [open $outfile w 0644]
+        foreach key [dict keys $yamldict] {
+            if {$key == "date"} {
+                if {[string is integer [dict get $yamldict $key]]} {
+                    set document($key) [clock format [dict get $yamldict $key] -format "%Y-%m-%d"]
+                } else {
+                    set document($key) [clock format [clock scan [dict get $yamldict $key]] -format "%Y-%m-%d"]
                 }
-               dict set yamldict javascript $jscode
+            } elseif {![info exists document($key)] || $document($key) eq ""} {
+                set document($key) [dict get $yamldict $key]
             }
         }
-        if {$arg(--mathjax)} {
-            set document(mathjax) {<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>}
-
-        } else {
-            set document(mathjax) ""
+        if {![dict exists $yamldict date]} {
+            dict set yamldict date [clock format [clock seconds] format "%Y-%m-%d"]
+        } 
+        set header [subst -nobackslashes -nocommands $header]
+        set head ""
+        if {$arg(--base64)} {
+            set header [mkdoc::inline-assets $filename $header]
         }
-        if {$arg(--refresh) > 9} {
-            set document(refresh) "<meta http-equiv=\"refresh\" content=\"$arg(--refresh)\" />"
-        } else {
-            set document(refresh) ""
+        puts $out $header
+        if {$hasyaml} {
+            set start [subst -nobackslashes -nocommands $htmlstart]            
+            puts $out $start
         }
-        if {$arg(--header) ne ""} {
-            if {[file exists $arg(--header)]} {
-                set infh [open $arg(--header) r]
-                dict set yamldict header [read $infh]
-                close $infh
-            }
-        }
-        if {$arg(--footer) ne ""} {
-            if {[file exists $arg(--footer)]} {
-                set infh [open $arg(--footer) r]
-                dict set yamldict footer [read $infh]
-                close $infh
-            }
-        }
-	# Regenerate yamltext from the final dict (to report the final CSS reference)
-	set yamltext "---\n"
-	foreach k [lsort -dict [dict keys $yamldict]] {
-	    append yamltext "${k}: [dict get $yamldict $k]\n"
-	}
-	append yamltext "---"
-
-	set style <style>$mkdocstyle</style>
-
-        if {$outmode eq "html"} {
-            if {[dict get $yamldict css] ne "mkdoc.css"} {
-		# Switch from embedded style to external link
-                set style [dict get $yamldict css]
-            }
-            set html [Markdown::convert $mdhtml]
-            if {$arg(--base64)} {
-                set html [mkdoc::inline-assets $filename $html]
-            }
-            ## issue in Markdown package?
-            set html [string map {&amp;amp; &amp; &amp;lt; &lt;  &amp;gt; &gt; &amp;quot; &quot;} $html]  
-            ## fixing curly brace issues in backtick code chunk
-            set html [regsub -all "code class='\{" $html {code class='}] 
-            set html [regsub -all "code class='(\[^'\]+)\}'" $html {code class='\1'}]             
-            set out [open $outfile w 0644]
-            foreach key [dict keys $yamldict] {
-                if {$key == "date"} {
-                    if {[string is integer [dict get $yamldict $key]]} {
-                        set document($key) [clock format [dict get $yamldict $key] -format "%Y-%m-%d"]
-                    } else {
-                        set document($key) [clock format [clock scan [dict get $yamldict $key]] -format "%Y-%m-%d"]
-                    }
-                } elseif {![info exists document($key)] || $document($key) eq ""} {
-                    set document($key) [dict get $yamldict $key]
-                }
-            }
-            if {![dict exists $yamldict date]} {
-                dict set yamldict date [clock format [clock seconds] format "%Y-%m-%d"]
-            } 
-            set header [subst -nobackslashes -nocommands $header]
-            set head ""
-            if {$arg(--base64)} {
-                set header [mkdoc::inline-assets $filename $header]
-            }
-            puts $out $header
-            if {$hasyaml} {
-                set start [subst -nobackslashes -nocommands $htmlstart]            
-                puts $out $start
-            }
-            puts $out $html
-            set footer [subst -nobackslashes -nocommands $footer]
-            puts $out $footer
-            close $out
-        } else {
+        puts $out $html
+        set footer [subst -nobackslashes -nocommands $footer]
+        puts $out $footer
+        close $out
+    } else {
+        if {$outfile ne "-"} {
             set out [open $outfile w 0644]
             puts $out $yamltext
             puts $out $mdhtml
             close $out
+        } else {
+            puts $yamltext
+            pits $mdhtml
         }
+    }
+}
 
+proc ::mkdoc::main {argv} {
+    global argv0
+    set APP $argv0
+    if {[regexp {tclmain} $APP]} {
+        set APP "tclmain -m mkdoc"
+    }
+set USAGE [string map [list "\n    " "\n"] {
+    Usage: __APP__ ?--help|--version|--license? INFILE OUTFILE ?--css file.css? 
+                      ?--header header.html? ?--footer footer.html? ?--mathjax true? 
+                      ?--javascript JSLIB|JSFile? ?--refresh 10? ?--base64 true?
+}]
+set HELP [string map [list "\n    " "\n"] {
+    mkdoc __VERSION__ - code documentation tool to process embedded Markdown markup
+                        given after "#'" comments 
+
+    Positional arguments (required):
+    
+        INFILE  - input file with:
+                - embedded Markdown comments: #' Markdown markup
+                - pure Markdown code (file.md)
+                - if INFILE is given as - input is taken from STDIN
+
+        OUTFILE - output file usually HTML or Markdown file
+                - file format is deduced on file extension .html or .md,
+                - if OUTFILE is the `-` sign output is written to STDOUT
+
+    Optional arguments:
+
+        --help             - display this help page, and exit
+        --version          - display version number, and exit
+        --license          - display license information, and exit
+        --css CSSFILE      - use the specified CSSFILE instead of internal default 
+                             mkdoc.css
+        --header HTMLFILE  - file with HTML code to be included after the body tag
+        --footer HTMLFILE  - file with HTML code to be included before the closing
+                             body tag                            
+        --base64  BOOL     - should local images, css files and JavaScript files being embedded as base 64 codes, default: true                
+        --javascript JSLIB - hightlightjs|file1,file2,... using these Javascript libs / files, default: NULL
+        --mathjax BOOL     - Embed the Mathjax Javascript library to add LaTeX formulas, default: false
+        --refresh INT      - Create a HTML page which does automatic refreshing after N seconds, default: 0
+        
+    Examples:
+
+        # create manual page for mkdoc.tcl itself 
+        __APP__ mkdoc.tcl mkdoc.html
+
+        # create manual code for a CPP file using a custom style sheet
+        __APP__ sample.cpp sample.html --css manual.css
+
+        # extract code documentation as simple Markdown
+        # ready to be processed further with pandoc
+        __APP__ sample.cpp sample.md 
+
+        # convert a Markdown file to HTML
+        __APP__ sample.md sample.html
+        
+        # convert a Markdown file to HTML with own css, header and foot
+        __APP__ sample.md sample.html --css my.css --footer foot.html --header head.html
+        
+        # convert a Markdown file to HTML parsing embedded Latex Formula
+        # using \\( inline formula \\) or \\[ block formula syntax \\]
+        
+        __APP__ sample.md sample.html --javascript highlightjs
+        
+        # convert a Markdown file to HTML parsing embedded Latex Formula
+        # using \\( inline formula \\) or \\[ block formula syntax \\]
+        
+        __APP__ sample.md sample.html --mathjax true 
+        
+    Author: @ Dr. Detlef Groth, Schwielowsee, 2019-2025
+
+    License: BSD
+}]
+
+    
+    if {[lsearch -exact $argv {--version}] > -1} {
+        puts "[package provide mkdoc]"
+    } elseif {[lsearch -exact $argv {--license}] > -1} {
+        puts "BSD License - see manual page"
+    } elseif {[lsearch -exact $argv {--help}] > -1} {
+        set usage [regsub -all {__VERSION__} [regsub -all {__APP__} $USAGE $APP] [package provide mkdoc]]
+        puts $usage
+        set help [regsub -all {__VERSION__} [regsub -all {__APP__} $HELP $APP] [package provide mkdoc]]
+        puts $help
+        exit 0
+    } elseif {[llength $argv] < 2} {
+        set usage [regsub -all {__VERSION__} [regsub -all {__APP__} $USAGE $APP] [package provide mkdoc]]
+        puts $usage
+    } elseif {[llength $argv] == 2} {
+        if {[regexp {^-.} [lindex $argv 1]]} {
+            puts stderr "Error: wrong outfile name [lindex $argv 1]"
+            exit 1
+        }
+        mkdoc::mkdoc [lindex $argv 0] [lindex $argv 1]
+    
+    } elseif {[llength $argv] > 2} {
+        mkdoc::mkdoc {*}$argv
     }
 }
 
