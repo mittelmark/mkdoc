@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <250106.0939>
+#  Last Modified : <250117.0745>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -23,6 +23,7 @@
 #                  2024-11-28 Release 0.10.1 minor documentation fix
 #                  2024-12-24 Release 0.10.2 amp-amp fix for source code blocks
 #                  2025-01-04 Release 0.11.0 Tcl 9 support
+#                  2025-01-18 Release 0.11.1 Fox multiple images include on same line
 #	
 ##############################################################################
 #
@@ -37,9 +38,9 @@
 #
 ##############################################################################
 #' ---
-#' title: mkdoc::mkdoc 0.11.1
+#' title: mkdoc::mkdoc 0.11.2
 #' author: Detlef Groth, Schwielowsee, Germany
-#' date: 2025-01-06
+#' date: 2025-01-18
 #' css: mkdoc.css
 #' ---
 #' 
@@ -151,8 +152,8 @@ package require Tcl 8.6-
 package require yaml
 package require Markdown
 
-package provide mkdoc 0.11.1
-package provide mkdoc::mkdoc 0.11.1
+package provide mkdoc 0.11.2
+package provide mkdoc::mkdoc 0.11.2
 namespace eval ::mkdoc {
     variable deindent [list \n\t \n "\n    " \n]
     
@@ -196,27 +197,45 @@ namespace eval ::mkdoc {
     }]
 } 
 
+proc ::mkdoc::img-replace {line filename} {
+    #set line [regsub {<img src="((data:|https?:))} $line "<imgsrc=\"\\1"]
+    set imgname [regsub {.*?<img src="([^"]+)".+$} $line "\\1"] ;# "
+    if {![regexp {^http} $imgname] && ![regexp {^data:} $imgname]} {
+        set ext [regsub {.+\.([a-zA-Z]{2,4})$} $imgname "\\1"]
+        set imgname [file normalize [file join [file dirname $filename] $imgname]]
+        set mode rb
+
+        if {$ext eq "svg"} {
+            set mode r
+            set ext "svg+xml"
+        }
+        if { [catch { set infhi [open $imgname $mode] }] } {
+            set line "$line\n\nError: Cannot open '$imgname'!\n\n"
+        } else {
+            set imgdata [binary encode base64 [read $infhi]]
+            close $infhi
+            set line [regsub {(.*?)<img src="([^"]+)"} $line "\\1<imgXXXXsrc=\"data:image/$ext;base64, $imgdata\""] ;# "C
+        }
+    } 
+    return $line
+}
 proc ::mkdoc::inline-assets {filename html} {
     set htm ""
     foreach line [split $html "\n"] {
         if {[regexp {<img src="(.+?)"} $line]} {
-            set imgname [regsub {.*<img src="(.+?)".+} $line "\\1"]
-            if {![regexp {^http} $imgname]} {
-                set ext [regsub {.+\.([a-zA-Z]{2,4})$} $imgname "\\1"]
-                set imgname [file normalize [file join [file dirname $filename] $imgname]]
-                set mode rb
-                if {$ext eq "svg"} {
-                    set mode r
-                    set ext "svg+xml"
+            while {true} {
+                if {![regexp {<img src="(.+?)"} $line]} {
+                    break
                 }
-                if { [catch { set infhi [open $imgname $mode] }] } {
-                    error "Error: Cannot open '$imgname'!"
+                set nline [img-replace $line $filename]
+                if {$nline eq $line || [regexp {Error:} $nline]} {
+                    set line $nline
+                    break
                 } else {
-                    set imgdata [binary encode base64 [read $infhi]]
-                    close $infhi
-                    set line [regsub {(.*)<img src="(.+?)"} $line "\\1<img src=\"data:image/$ext;base64, $imgdata\""]
+                    set line $nline
                 }
             }
+            set line [regsub -all {imgXXXXsrc} $line {img src}]
         } elseif {[regexp -nocase {<link +rel="stylesheet" +href="(.+.css)">} $line match cssfile]} {
             if {[file exists [file join [file dirname $cssfile]]]} {
                 set fname [file join [file dirname $filename] $cssfile]
@@ -876,6 +895,8 @@ set HELP [string map [list "\n    " "\n"] {
 #'      - Tcl 9 support
 #' - 2025-01-04 Release 0.11.1
 #'      - fixing outfile ending with Tmd, Rmd etc seen as HTML files
+#' - 2025-01-18 Release 0.11.2
+#'      - fixing inline multiple images on the same line
 #'
 #' ## <a name='todo'>TODO</a>
 #'
