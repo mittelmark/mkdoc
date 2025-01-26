@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <250117.0745>
+#  Last Modified : <250126.1218>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -23,7 +23,8 @@
 #                  2024-11-28 Release 0.10.1 minor documentation fix
 #                  2024-12-24 Release 0.10.2 amp-amp fix for source code blocks
 #                  2025-01-04 Release 0.11.0 Tcl 9 support
-#                  2025-01-18 Release 0.11.1 Fox multiple images include on same line
+#                  2025-01-18 Release 0.11.2 Fix multiple images include on same line
+#                  2025-01-26 Release 0.11.3 Fix invalid argument crash, uneven length option list
 #	
 ##############################################################################
 #
@@ -38,9 +39,9 @@
 #
 ##############################################################################
 #' ---
-#' title: mkdoc::mkdoc 0.11.2
+#' title: mkdoc::mkdoc 0.11.3
 #' author: Detlef Groth, Schwielowsee, Germany
-#' date: 2025-01-18
+#' date: 2025-01-26
 #' css: mkdoc.css
 #' ---
 #' 
@@ -152,8 +153,8 @@ package require Tcl 8.6-
 package require yaml
 package require Markdown
 
-package provide mkdoc 0.11.2
-package provide mkdoc::mkdoc 0.11.2
+package provide mkdoc 0.11.3
+package provide mkdoc::mkdoc 0.11.3
 namespace eval ::mkdoc {
     variable deindent [list \n\t \n "\n    " \n]
     
@@ -262,6 +263,9 @@ proc ::mkdoc::mkdoc {filename outfile args} {
     array set document [list title "" author "" css mkdoc.css footer "" header "" javascript ""] 
     array set arg [list --css "" --footer "" --header "" --javascript "" \
                    --mathjax false --refresh 0 --base64 true]
+    if {! [expr {[llength $args] % 2 == 0}]} {
+        return -code error "List mus have an even length of type '--option value'!"
+    }
     array set arg $args
     if {[file extension $filename] eq [file extension $outfile] && $filename ne "-"} {
 	return -code error "Error: infile and outfile must have different file extensions!"
@@ -468,6 +472,8 @@ proc ::mkdoc::mkdoc {filename outfile args} {
 
 proc ::mkdoc::main {argv} {
     global argv0
+    set valid_args [list --help --version --license --css --header --footer --mathjax \
+                    --javascript --refresh --base64]
     set APP $argv0
     if {[regexp {tclmain} $APP]} {
         set APP "tclmain -m mkdoc"
@@ -562,6 +568,24 @@ set HELP [string map [list "\n    " "\n"] {
         mkdoc::mkdoc [lindex $argv 0] [lindex $argv 1]
     
     } elseif {[llength $argv] > 2} {
+        foreach arg $argv {
+            if {[regexp {^-} $arg]} {
+                if {$arg ni $valid_args} {
+                    puts "Error: The argument '$arg' is not valid!"
+                    set usage [regsub -all {__VERSION__} [regsub -all {__APP__} $USAGE $APP] [package provide mkdoc]]
+                    puts $usage
+                    exit 0
+                }
+                    
+            }
+        }
+        if {! [expr {[llength $argv] % 2 == 0}]} {
+            puts "Error: option List muts have an even length of type '--option value'!"
+            set usage [regsub -all {__VERSION__} [regsub -all {__APP__} $USAGE $APP] [package provide mkdoc]]
+            puts $usage
+            exit 0
+        }
+
         mkdoc::mkdoc {*}$argv
     }
 }
@@ -897,6 +921,9 @@ set HELP [string map [list "\n    " "\n"] {
 #'      - fixing outfile ending with Tmd, Rmd etc seen as HTML files
 #' - 2025-01-18 Release 0.11.2
 #'      - fixing inline multiple images on the same line
+#' - 2025-01-26 Release 0.11.3
+#'      - fixing wrong command line argument crash
+#'      - fixing uneven length option list
 #'
 #' ## <a name='todo'>TODO</a>
 #'
