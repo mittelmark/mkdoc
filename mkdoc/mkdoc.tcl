@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <250126.1218>
+#  Last Modified : <250127.1244>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -41,7 +41,7 @@
 #' ---
 #' title: mkdoc::mkdoc 0.11.3
 #' author: Detlef Groth, Schwielowsee, Germany
-#' date: 2025-01-26
+#' date: 2025-01-27
 #' css: mkdoc.css
 #' ---
 #' 
@@ -935,7 +935,7 @@ set HELP [string map [list "\n    " "\n"] {
 #'
 #' ## <a name='license'>LICENSE AND COPYRIGHT</a>
 #'
-#' Markdown extractor and converter mkdoc::mkdoc, version 0.11.1
+#' Markdown extractor and converter mkdoc::mkdoc, version 0.11.3
 #'
 #' Copyright (c) 2019-25  Detlef Groth, E-mail: <dgroth(at)uni(minus)potsdam(dot)de>
 #' 
