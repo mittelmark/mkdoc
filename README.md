@@ -32,7 +32,7 @@ Since version 0.9.0 it as well supports embedding LaTeX equations using the
 [MathJax Javascript library](https://www.mathjax.org/)
 
 * current code and manuals:  [mkdoc.zip](https://github.com/mittelmark/mkdoc/archive/refs/heads/main.zip)
-* Manual pagee (version 0.11.0) [mkdoc.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc.html)
+* Manual page [mkdoc.html](http://htmlpreview.github.io/?https://github.com/mittelmark/mkdoc/blob/master/mkdoc/mkdoc.html)
 
 Here an example of an embedded mkdoc comment for a Python script:
 

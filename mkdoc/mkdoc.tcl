@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <250127.1244>
+#  Last Modified : <250127.1251>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -45,8 +45,6 @@
 #' css: mkdoc.css
 #' ---
 #' 
-#' <center> Manual: [short (doctools)](mkdoc.html) - [long (mkdoc)](mkdoc-mkdoc.html) </center>
-#'
 #' ## NAME
 #'
 #' **mkdoc::mkdoc**  - Tcl package and command line application to extract and format 
