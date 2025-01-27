@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <250127.1251>
+#  Last Modified : <250127.1257>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -40,7 +40,7 @@
 ##############################################################################
 #' ---
 #' title: mkdoc::mkdoc 0.11.3
-#' author: Detlef Groth, Schwielowsee, Germany
+#' author: Detlef Groth, University of Potsdam, Germany
 #' date: 2025-01-27
 #' css: mkdoc.css
 #' ---
@@ -539,7 +539,7 @@ set HELP [string map [list "\n    " "\n"] {
         
         __APP__ sample.md sample.html --mathjax true 
         
-    Author: @ Dr. Detlef Groth, Schwielowsee, 2019-2025
+    Author: @ Detlef Groth, University of Potsdam, Germany 2019-2025
 
     License: BSD
 }]
