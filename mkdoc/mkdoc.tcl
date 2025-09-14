@@ -2,7 +2,7 @@
 ##############################################################################
 #  Author        : Dr. Detlef Groth
 #  Created       : Fri Nov 15 10:20:22 2019
-#  Last Modified : <250127.1257>
+#  Last Modified : <250312.1512>
 #
 #  Description	 : Command line utility and package to extract Markdown documentation 
 #                  from programming code if embedded as after comment sequence #' 
@@ -276,7 +276,7 @@ proc ::mkdoc::mkdoc {filename outfile args} {
     if {[file extension $filename] in [list .md .man] || $filename eq "-"} {
         set inmode markup
     }
-
+    
     set markdown ""
     if {$filename eq "-"} {
         set infh stdin
@@ -324,58 +324,56 @@ proc ::mkdoc::mkdoc {filename outfile args} {
          refresh   ""
          ]
 
-     set mdhtml ""
-     set yamlflag false
-     set yamltext ""
-     set hasyaml false
-     set indent ""
-     set header $htmltemplate
-     set lnr 0
-     foreach line [split $markdown "\n"] {
-         incr lnr 
-         if {$lnr < 5 && !$yamlflag && [regexp {^---} $line]} {
-             set yamlflag true
-         } elseif {$yamlflag && [regexp {^---} $line]} {
-             set hasyaml true
-             
-             set yamldict [dict merge $yamldict [yaml::yaml2dict $yamltext]]
-             
-             set yamlflag false
-         } elseif {$yamlflag} {
-             append yamltext "$line\n"
-         } else {
-             set line [regsub -all {!\[\]\((.+?)\)} $line "<img src=\"\\1\"></img>"]
-             append mdhtml "$indent$line\n"
-         }
-     }
-     if {$arg(--css) ne ""} {
-         set css ""
-         foreach cs [split $arg(--css) ","] {
-             append css   "<link rel=\"stylesheet\" href=\"$cs\">"
-         }
-         dict set yamldict css $css
-     }
-     set stylejs ""
-     if {$arg(--javascript) ne ""} {
-         if {$arg(--javascript) eq "highlightjs"} {
-             dict set yamldict javascript [string map $deindent {
-                                           <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">
-                                           <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
-                                           <!-- tcl must be loaded extra -->
-                                           <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/languages/tcl.min.js"></script>
-                                           <!-- Initialize highlight.js -->
-                                           <script>hljs.highlightAll();</script>
-            }]
-            set stylejs {<style>
-            pre, blockquote pre { background: #fafafa !important; }
-            </style>
-            }
+    set mdhtml ""
+    set yamlflag false
+    set yamltext ""
+    set hasyaml false
+    set indent ""
+    set header $htmltemplate
+    set lnr 0
+    foreach line [split $markdown "\n"] {
+        incr lnr 
+        if {$lnr < 5 && !$yamlflag && [regexp {^---} $line]} {
+            set yamlflag true
+        } elseif {$yamlflag && [regexp {^---} $line]} {
+            set hasyaml true
+            set yamldict [dict merge $yamldict [yaml::yaml2dict $yamltext]]
+            set yamlflag false
+        } elseif {$yamlflag} {
+            append yamltext "$line\n"
         } else {
-            set jscode ""
-            foreach js [split $arg(--javascript) ","] {
-                append jscode "<script src=\"$js\"> </script>"
-            }
-            dict set yamldict javascript $jscode
+            set line [regsub -all {!\[\]\((.+?)\)} $line "<img src=\"\\1\"></img>"]
+            append mdhtml "$indent$line\n"
+        }
+    }
+    if {$arg(--css) ne ""} {
+        set css ""
+        foreach cs [split $arg(--css) ","] {
+            append css   "<link rel=\"stylesheet\" href=\"$cs\">"
+        }
+        dict set yamldict css $css
+    }
+    set stylejs ""
+    if {$arg(--javascript) ne ""} {
+        if {$arg(--javascript) eq "highlightjs"} {
+            dict set yamldict javascript [string map $deindent {
+                                          <link rel="stylesheet" href="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/styles/atom-one-light.min.css">
+                                          <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+                                          <!-- tcl must be loaded extra -->
+                                          <script src="https://unpkg.com/@highlightjs/cdn-assets@11.9.0/languages/tcl.min.js"></script>
+                                          <!-- Initialize highlight.js -->
+                                          <script>hljs.highlightAll();</script>
+           }]
+           set stylejs {<style>
+           pre, blockquote pre { background: #fafafa !important; }
+           </style>
+           }
+        } else {
+           set jscode ""
+           foreach js [split $arg(--javascript) ","] {
+               append jscode "<script src=\"$js\"> </script>"
+           }
+           dict set yamldict javascript $jscode
         }
     }
     if {$arg(--mathjax)} {
@@ -411,7 +409,6 @@ proc ::mkdoc::mkdoc {filename outfile args} {
     append yamltext "---"
     
     set style <style>$mkdocstyle</style>
-    
     if {$outmode eq "html"} {
         if {[dict get $yamldict css] ne "mkdoc.css"} {
             # Switch from embedded style to external link
@@ -425,7 +422,7 @@ proc ::mkdoc::mkdoc {filename outfile args} {
         set html [string map {&amp;amp; &amp; &amp;lt; &lt;  &amp;gt; &gt; &amp;quot; &quot;} $html]  
         ## fixing curly brace issues in backtick code chunk
         set html [regsub -all "code class='\{" $html {code class='}] 
-        set html [regsub -all "code class='(\[^'\]+)\}'" $html {code class='\1'}]             
+        set html [regsub -all "code class='(\[^'\]+)\}'" $html {code class='\1'}]
         set out [open $outfile w 0644]
         foreach key [dict keys $yamldict] {
             if {$key == "date"} {
@@ -463,7 +460,7 @@ proc ::mkdoc::mkdoc {filename outfile args} {
             close $out
         } else {
             puts $yamltext
-            pits $mdhtml
+            puts $mdhtml
         }
     }
 }
@@ -567,7 +564,7 @@ set HELP [string map [list "\n    " "\n"] {
     
     } elseif {[llength $argv] > 2} {
         foreach arg $argv {
-            if {[regexp {^-} $arg]} {
+            if {[regexp {^-.+} $arg]} {
                 if {$arg ni $valid_args} {
                     puts "Error: The argument '$arg' is not valid!"
                     set usage [regsub -all {__VERSION__} [regsub -all {__APP__} $USAGE $APP] [package provide mkdoc]]
@@ -578,16 +575,14 @@ set HELP [string map [list "\n    " "\n"] {
             }
         }
         if {! [expr {[llength $argv] % 2 == 0}]} {
-            puts "Error: option List muts have an even length of type '--option value'!"
+            puts "Error: option List must have an even length of type '--option value'!"
             set usage [regsub -all {__VERSION__} [regsub -all {__APP__} $USAGE $APP] [package provide mkdoc]]
             puts $usage
             exit 0
         }
-
         mkdoc::mkdoc {*}$argv
     }
 }
-
 #'
 #' ## <a name='format'>FORMATTING</a>
 #' 
